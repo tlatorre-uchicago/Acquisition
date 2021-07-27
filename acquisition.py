@@ -88,13 +88,13 @@ if __name__ == '__main__':
     dpo.timeout = 3000000
     dpo.encoding = 'latin_1'
 
-    print("*idn? = %s" % dpo.query('*idn?'))
+    print("*idn? = %s" % dpo.query('*idn?').strip())
 
     if args.settings:
         with open(args.settings) as f:
             settings = json.load(f)
         print("loading settings from %s" % args.settings)
-        set_settings(settings)
+        set_settings(dpo,settings)
 
     # increment the last runNumber by 1
     if args.runNumber is None:
@@ -110,7 +110,7 @@ if __name__ == '__main__':
             with open('runNumber.txt','w') as file:
                 file.write("%i" % args.runNumber)
 
-    print("Saving settings to run_%i_settings.json" % args.runNumber)
+    print("Saving settings to run%i_settings.json" % args.runNumber)
 
     with open("run%i_settings.json" % args.runNumber,'w') as f:
         json.dump(settings,f)
@@ -185,6 +185,7 @@ if __name__ == '__main__':
     for i in count():
         if i % 10 == 0:
             print(".",end='')
+            sys.stdout.flush()
 
         if int(dpo.query(':ADER?')) == 1: 
             print("\nAcquisition complete")
@@ -217,7 +218,6 @@ if __name__ == '__main__':
         time.sleep(0.1)
 
     for i in range(1,5):
-        print("Saving Channel %i waveform" % i)
         dpo.write(':DISK:SAVE:WAVeform CHANnel%i %s\\run%i",%s,ON' % (i,output_path,args.runNumber,args.format))
         while not is_done(dpo):
             time.sleep(0.1)
