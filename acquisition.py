@@ -37,7 +37,10 @@ def get_settings(dpo):
 
 def set_settings(dpo, settings):
     for key, value in settings.iteritems():
-        dpo.write('%s %s' % key, value)
+        dpo.write('%s %s' % (key, value))
+
+def is_done(dpo):
+    return int(dpo.query("*OPC?")) == 1
 
 if __name__ == '__main__':
     from argparse import ArgumentParser
@@ -67,7 +70,7 @@ if __name__ == '__main__':
         print("format must be either 'h5' or 'bin'",file=sys.stderr)
         exit(1)
 
-    if args.trigSlope not in ("POSitive","NEGative"):
+    if args.trigSlope and args.trigSlope not in ("POSitive","NEGative"):
         print("trigSlope must be one of either 'POSitive' or 'NEGative'")
         exit(1)
 
@@ -99,7 +102,10 @@ if __name__ == '__main__':
     with open("run%i_settings.json" % args.runNumber,'w') as f:
         json.dump(settings,f)
 
-    dpo.write(':STOP;*OPC?')
+    dpo.write(':STOP')
+
+    while not is_done(dpo):
+        time.sleep(0.1)
 
     # percent of screen location
     # FIXME: Do we need this next line?
@@ -157,7 +163,8 @@ if __name__ == '__main__':
         dpo.write(':TRIGger:EDGE:SLOPe %s;' % args.trigSlope)
 
     # configure data transfer settings
-    time.sleep(2)
+    while not is_done(dpo):
+        time.sleep(0.1)
 
     dpo.write('*CLS;:SINGle')
     start = time.time()
@@ -173,7 +180,9 @@ if __name__ == '__main__':
             time.sleep(0.1)
             if args.timeout is not None and time.time() - start > args.timeout:
                 end_early = True
-                dpo.write(':STOP;*OPC?')
+                dpo.write(':STOP')
+                while not is_done(opc):
+                    time.sleep(0.1)
                 print()
                 break
 
@@ -190,14 +199,15 @@ if __name__ == '__main__':
     output_path = 'C:\\Users\\Public\\'
     # save all segments (as opposed to just the current segment)
     dpo.write(':DISK:SEGMented ALL')
-    print(dpo.query('*OPC?'))
-    print("Ready to save all segments")
-    time.sleep(0.5)
+
+    while not is_done(opc):
+        time.sleep(0.1)
+
     for i in range(1,5):
         print("Saving Channel %i waveform" % i)
         dpo.write(':DISK:SAVE:WAVeform CHANnel%i %sWavenewscope_CH1_run%s",%s,ON' % (i,output_path,args.runNumber,args.format))
-        print(dpo.query('*OPC?'))
-        time.sleep(1)
+        while not is_done(dpo):
+            time.sleep(0.1)
 
     dpo.write(':ACQuire:MODE RTIMe')
 
