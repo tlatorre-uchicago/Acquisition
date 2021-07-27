@@ -1,0 +1,38 @@
+Acquisition scripts for taking data from Keysight scopes
+========================================================
+
+To take data, run:
+
+```console
+$ python acquisition.py --ip [ip address of scope] -n [number of events]
+```
+
+This will save the waveforms for all channels in the binary format on the scope
+in the directory "C:\Users\Public".
+
+You can also take data in the HDF5 format with:
+
+```console
+$ python acquisition.py --ip [ip address of scope] -n [number of events] --format h5
+```
+
+Every single acquisition is associated with a particular run number. You can manually specify a run number by running with `-r`, for example:
+
+```console
+$ python acquisition.py -r 10 --ip [ip address of scope] -n [number of events]
+```
+
+otherwise, by default, it will try to read the run number stored in the file
+runNumber.txt and increment it by 1 each time.
+
+The scope settings after each
+acquisition are returned to the values they had before you ran the script. In
+addition, the settings are stored each time you run the script into a json file
+with the filename `run[NUMBER]_settings.json'. If you want to reload the
+settings from a previous run you can pass the `--settings` argument like:
+
+```console
+$ python acquisition.py --ip [ip address of scope] -n [number of events] --settings run1_settings.json
+```
+
+which will load the settings from that run before taking data.

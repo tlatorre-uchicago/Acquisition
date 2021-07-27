@@ -52,7 +52,7 @@ if __name__ == '__main__':
     parser = ArgumentParser(description='Take data from the Agilent scope')
     parser.add_argument('-n','--numEvents', type=int, default=500, help='number of events')
     parser.add_argument('-r','--runNumber', type=int, default=None, help='run number')
-    parser.add_argument('--sampleRate', type=float, default=20, help='Sampling rate in GHz (default 20)', required=True)
+    parser.add_argument('--sampleRate', type=float, default=None, help='Sampling rate in GHz')
     parser.add_argument('--trigCh', type=str, default=None, help="trigger Channel (1,2,3,4, or 'AUX')")
     parser.add_argument('--trig', type=float, default=None, help='trigger value in V')
     parser.add_argument('--trigSlope', default=None, help='trigger slope should be "POSitive or NEGative"')
@@ -120,9 +120,6 @@ if __name__ == '__main__':
     while not is_done(dpo):
         time.sleep(0.1)
 
-    # percent of screen location
-    # FIXME: Do we need this next line?
-    #dpo.write(':TIMebase:REFerence:PERCent 50')
     if args.sampleRate:
         dpo.write(':ACQuire:SRATe:ANALog {}'.format(args.sampleRate*1e9))
     # offset
