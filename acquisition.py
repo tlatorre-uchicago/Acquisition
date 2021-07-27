@@ -215,7 +215,7 @@ if __name__ == '__main__':
         time.sleep(0.1)
 
     for i in range(1,5):
-        dpo.write(':DISK:SAVE:WAVeform CHANnel%i "%s\\run%i",%s,ON' % (i,output_path,args.runNumber,args.format))
+        dpo.write(':DISK:SAVE:WAVeform CHANnel%i ,"%s\\run%i_ch%i",%s,ON' % (i,output_path,args.runNumber,i,args.format))
         while not is_done(dpo):
             time.sleep(0.1)
 
