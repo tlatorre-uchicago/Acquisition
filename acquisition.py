@@ -6,13 +6,14 @@ import shutil
 import datetime
 import visa
 from itertools import count
+import json
 
 SETTINGS = [\
     ':TIMebase:RANGe',
     ':ACQuire:SRATe:ANALog',
     ':TIMebase:POSition',
     ':ACQuire:MODE',
-    ':ACQuire:INTerpolate']
+    ':ACQuire:INTerpolate',
     ':CHANnel1:SCALe',
     ':CHANnel2:SCALe',
     ':CHANnel3:SCALe',
@@ -21,6 +22,11 @@ SETTINGS = [\
     ':CHANnel2:OFFSet',
     ':CHANnel3:OFFSet',
     ':CHANnel4:OFFSet',
+    ':ACQuire:INTerpolate',
+    ':TRIGger:MODE',
+    ':TRIGger:EDGE:SOURce',
+    ':TRIGger:LEVel',
+    ':TRIGger:EDGE:SLOPe',
 ]
 
 def get_settings(dpo):
@@ -30,7 +36,7 @@ def get_settings(dpo):
     return values
 
 def set_settings(dpo, settings):
-    for key, value in settings:
+    for key, value in settings.iteritems():
         dpo.write('%s %s' % key, value)
 
 if __name__ == '__main__':
@@ -40,7 +46,6 @@ if __name__ == '__main__':
     parser.add_argument('-n','--numEvents', type=int, default=500, help='number of events')
     parser.add_argument('-r','--runNumber', type=int, default=None, help='run number')
     parser.add_argument('--sampleRate', type=float, default=20, help='Sampling rate in GHz (default 20)', required=True)
-    parser.add_argument('--horizontalWindow', type=int, default=125, help='horizontal Window (default 125)', required=True)
     parser.add_argument('--trigCh', type=str, default=None, help="trigger Channel (1,2,3,4, or 'AUX')")
     parser.add_argument('--trig', type=float, default=None, help='trigger value in V')
     parser.add_argument('--trigSlope', default=None, help='trigger slope should be "POSitive or NEGative"')
@@ -70,6 +75,8 @@ if __name__ == '__main__':
     rm = visa.ResourceManager("@py")
     dpo = rm.open_resource('TCPIP::%s::INSTR' % args.ip_address)
 
+    settings = get_settings(dpo)
+
     dpo.timeout = 3000000
     dpo.encoding = 'latin_1'
 
@@ -89,10 +96,11 @@ if __name__ == '__main__':
             with open('runNumber.txt','w') as file:
                 file.write("%i" % args.runNumber)
 
+    with open("run%i_settings.json" % args.runNumber,'w') as f:
+        json.dump(settings,f)
+
     dpo.write(':STOP;*OPC?')
 
-    # Sets the full-scale horizontal time in s. Range value is ten times the time-per division value.
-    dpo.write(':TIMebase:RANGe {}'.format(args.horizontalWindow*1e-9))
     # percent of screen location
     # FIXME: Do we need this next line?
     #dpo.write(':TIMebase:REFerence:PERCent 50')
@@ -105,9 +113,6 @@ if __name__ == '__main__':
     dpo.write(':ACQuire:MODE SEGMented')
     # number of segments to acquire
     dpo.write(':ACQuire:SEGMented:COUNt {}'.format(args.numEvents))
-    numPoints = args.sampleRate*args.horizontalWindow
-    print("setting number of points to %.2f*%.2f = %.2f" % (args.sampleRate,args.horizontalWindow,numPoints))
-    dpo.write(':ACQuire:POINts:ANALog {}'.format(numPoints))
     # interpolation is set off (otherwise its set to auto, which cause errors downstream)
     dpo.write(':ACQuire:INTerpolate 0')
 
@@ -162,7 +167,7 @@ if __name__ == '__main__':
             print("",end='')
 
         if int(dpo.query(':ADER?')) == 1: 
-            print "\nAcquisition complete"
+            print("\nAcquisition complete")
             break
         else:
             time.sleep(0.1)
@@ -178,9 +183,9 @@ if __name__ == '__main__':
     trigRate = float(args.numEvents)/duration
 
     if not end_early:
-        print "\nRun duration: %0.2f s. Trigger rate: %.2f Hz\n" % (duration,trigRate) 
+        print("Run duration: %0.2f s. Trigger rate: %.2f Hz\n" % (duration,trigRate))
     else:
-        print "\nRun duration: %0.2f s. Trigger rate: unknown\n" % (duration) 
+        print("Run duration: %0.2f s. Trigger rate: unknown\n" % (duration))
 
     output_path = 'C:\\Users\\Public\\'
     # save all segments (as opposed to just the current segment)
@@ -189,11 +194,13 @@ if __name__ == '__main__':
     print("Ready to save all segments")
     time.sleep(0.5)
     for i in range(1,5):
-        print("Saving Channel 1 waveform")
+        print("Saving Channel %i waveform" % i)
         dpo.write(':DISK:SAVE:WAVeform CHANnel%i %sWavenewscope_CH1_run%s",%s,ON' % (i,output_path,args.runNumber,args.format))
         print(dpo.query('*OPC?'))
         time.sleep(1)
 
     dpo.write(':ACQuire:MODE RTIMe')
+
+    set_settings(dpo,settings)
 
     dpo.close()
