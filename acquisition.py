@@ -32,7 +32,11 @@ SETTINGS = [\
 def get_settings(dpo):
     values = {}
     for setting in SETTINGS:
-        values[setting] = dpo.query('%s?' % setting)
+        if setting == ':TRIGger:LEVel':
+            for channel in ['CHANnel%i' % i for i in range(1,5)] + ['AUX']:
+                values["%s %s," % (setting,channel)] = dpo.query('%s? %s' % (setting,channel))
+        else:
+            values[setting] = dpo.query('%s?' % setting)
     return values
 
 def set_settings(dpo, settings):
@@ -64,6 +68,7 @@ if __name__ == '__main__':
     parser.add_argument('--timeout', type=float, default=None, help='Max run duration [s]')
     parser.add_argument('--format', default='bin', help='output format (h5 or bin)')
     parser.add_argument('--ip-address', help='ip address of scope', required=True)
+    parser.add_argument('--settings', default=None, help='json file with settings', required=False)
     args = parser.parse_args()
 
     if args.format not in ('h5','bin'):
@@ -83,7 +88,13 @@ if __name__ == '__main__':
     dpo.timeout = 3000000
     dpo.encoding = 'latin_1'
 
-    print("*idn? = %s" % dpo.query('*idn?')))
+    print("*idn? = %s" % dpo.query('*idn?'))
+
+    if args.settings:
+        with open(args.settings) as f:
+            settings = json.load(f)
+        print("loading settings from %s" % args.settings)
+        set_settings(settings)
 
     # increment the last runNumber by 1
     if args.runNumber is None:
@@ -98,6 +109,8 @@ if __name__ == '__main__':
 
             with open('runNumber.txt','w') as file:
                 file.write("%i" % args.runNumber)
+
+    print("Saving settings to run_%i_settings.json" % args.runNumber)
 
     with open("run%i_settings.json" % args.runNumber,'w') as f:
         json.dump(settings,f)
@@ -171,7 +184,7 @@ if __name__ == '__main__':
     end_early = False
     for i in count():
         if i % 10 == 0:
-            print("",end='')
+            print(".",end='')
 
         if int(dpo.query(':ADER?')) == 1: 
             print("\nAcquisition complete")
@@ -181,7 +194,7 @@ if __name__ == '__main__':
             if args.timeout is not None and time.time() - start > args.timeout:
                 end_early = True
                 dpo.write(':STOP')
-                while not is_done(opc):
+                while not is_done(dpo):
                     time.sleep(0.1)
                 print()
                 break
@@ -192,20 +205,20 @@ if __name__ == '__main__':
     trigRate = float(args.numEvents)/duration
 
     if not end_early:
-        print("Run duration: %0.2f s. Trigger rate: %.2f Hz\n" % (duration,trigRate))
+        print("Run duration: %0.2f s. Trigger rate: %.2f Hz" % (duration,trigRate))
     else:
-        print("Run duration: %0.2f s. Trigger rate: unknown\n" % (duration))
+        print("Run duration: %0.2f s. Trigger rate: unknown" % (duration))
 
-    output_path = 'C:\\Users\\Public\\'
+    output_path = 'C:\\Users\\Public'
     # save all segments (as opposed to just the current segment)
     dpo.write(':DISK:SEGMented ALL')
 
-    while not is_done(opc):
+    while not is_done(dpo):
         time.sleep(0.1)
 
     for i in range(1,5):
         print("Saving Channel %i waveform" % i)
-        dpo.write(':DISK:SAVE:WAVeform CHANnel%i %sWavenewscope_CH1_run%s",%s,ON' % (i,output_path,args.runNumber,args.format))
+        dpo.write(':DISK:SAVE:WAVeform CHANnel%i %s\\run%i",%s,ON' % (i,output_path,args.runNumber,args.format))
         while not is_done(dpo):
             time.sleep(0.1)
 
