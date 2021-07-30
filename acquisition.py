@@ -183,77 +183,32 @@ if __name__ == '__main__':
 
     print("done setting up")
 
-    #dpo.write('*CLS;:SINGle')
-    #start = time.time()
-    #end_early = False
-    #for i in count():
-    #    if i % 10 == 0:
-    #        print(".",end='')
-    #        sys.stdout.flush()
-
-    #    if int(dpo.query(':ADER?')) == 1: 
-    #        print("\nAcquisition complete")
-    #        break
-    #    else:
-    #        time.sleep(0.1)
-    #        if args.timeout is not None and time.time() - start > args.timeout:
-    #            end_early = True
-    #            dpo.write(':STOP')
-    #            while not is_done(dpo):
-    #                time.sleep(0.1)
-    #            print()
-    #            break
-
-    #end = time.time()
-
-    #duration = end - start
-    #trigRate = float(args.numEvents)/duration
-
-    #if not end_early:
-    #    print("Run duration: %0.2f s. Trigger rate: %.2f Hz" % (duration,trigRate))
-    #else:
-    #    print("Run duration: %0.2f s. Trigger rate: unknown" % (duration))
-
-    #output_path = 'C:\\Users\\Public'
-    ## save all segments (as opposed to just the current segment)
-    #dpo.write(':DISK:SEGMented ALL')
-
-
-    print("system header off")
     dpo.write(":system:header off")
-    print("ascii")
     dpo.write(":WAVeform:format ASCII")
-    print("xinc")
     xinc = float(dpo.query(":WAVeform:xincrement?"))
-    print("xorig")
     xorg = float(dpo.query(":WAVeform:xorigin?"))
-    print("n points")
-    n = float(dpo.query(":WAVeform:points?"))
-    x = xorg + np.linspace(0,xinc*n,n)
+    points = float(dpo.query(":WAVeform:points?"))
 
+    # x = xorg + np.linspace(0,xinc*n,n)
     f = h5py.File(args.output,"w")
+    f.attrx['xinc'] = xinc
+    f.attrx['xorg'] = xorg
+    f.attrx['points'] = points
+
     try:
-	enabled_channels = []
-	for i in range(1,5):
-	    if int(dpo.query(":CHANnel%i:display?" % i)) == 1:
-		enabled_channels.append(i)
-		f.create_dataset("channel%i" % i, (args.numEvents, n), dtype='f4')
+        enabled_channels = []
+        for i in range(1,5):
+            if int(dpo.query(":CHANnel%i:display?" % i)) == 1:
+                enabled_channels.append(i)
+            f.create_dataset("channel%i" % i, (args.numEvents, n), dtype='f4')
 
-	print("enabled channels = ", enabled_channels)
-	for i in range(args.numEvents):
-	    dpo.write(':digitize')
-	    for j in enabled_channels:
-		dpo.write(":WAVeform:source channel%i" % j)
-		f['channel%i' % j][i] = np.array(map(float,dpo.query(":WAVeform:DATA?").split(',')[:-1]))
+        for i in range(args.numEvents):
+            dpo.write(':digitize')
+            for j in enabled_channels:
+                dpo.write(":WAVeform:source channel%i" % j)
+            f['channel%i' % j][i] = np.array(map(float,dpo.query(":WAVeform:DATA?").split(',')[:-1]))
     finally:
-	f.close()
-
-    #for i in range(1,5):
-    #    print(':DISK:SAVE:WAVeform CHANnel%i ,"%s\\run_%i_ch%i",%s,ON' % (i,output_path,args.runNumber,i,args.format))
-    #    dpo.write(':DISK:SAVE:WAVeform CHANnel%i ,"%s\\run_%i_ch%i",%s,ON' % (i,output_path,args.runNumber,i,args.format))
-    #    time.sleep(1)
-    #    while not is_done(dpo):
-    #        time.sleep(0.1)
+        f.close()
 
     dpo.write(':ACQuire:MODE RTIMe')
 
