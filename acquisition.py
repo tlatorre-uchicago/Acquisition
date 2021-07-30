@@ -130,14 +130,6 @@ if __name__ == '__main__':
     # offset
     if args.timeoffset:
         dpo.write(':TIMebase:POSition {}'.format(args.timeoffset*1e-9))
-    # fast frame/segmented acquisition mode
-    #dpo.write(':ACQuire:MODE SEGMented')
-    # number of segments to acquire
-    #dpo.write(':ACQuire:SEGMented:COUNt {}'.format(args.numEvents))
-    # interpolation is set off (otherwise its set to auto, which cause errors downstream)
-    dpo.write(':ACQuire:INTerpolate 0')
-
-    dpo.write(':ACQuire:BANDwidth 5.E8')
 
     if args.vScale1:
         dpo.write(':CHANnel1:SCALe %.2f'.format(args.vScale1))
@@ -203,6 +195,10 @@ if __name__ == '__main__':
             f.create_dataset("channel%i" % i, (args.numEvents, n), dtype='f4')
 
         for i in range(args.numEvents):
+            if i % 10 == 0:
+                print(".",end='')
+                sys.stdout.flush()
+
             dpo.write(':digitize')
             for j in enabled_channels:
                 dpo.write(":WAVeform:source channel%i" % j)
