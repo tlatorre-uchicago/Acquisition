@@ -4,9 +4,11 @@ import os
 import time
 import shutil
 import datetime
-import visa
+import pyvisa as visa
 from itertools import count
 import json
+import numpy as np
+import h5py
 
 SETTINGS = [\
     ':TIMebase:RANGe',
@@ -69,6 +71,7 @@ if __name__ == '__main__':
     parser.add_argument('--format', default='bin', help='output format (h5 or bin)')
     parser.add_argument('--ip-address', help='ip address of scope', required=True)
     parser.add_argument('--settings', default=None, help='json file with settings', required=False)
+    parser.add_argument('-o','--output', default=None, help='output file name', required=True)
     args = parser.parse_args()
 
     if args.format not in ('h5','bin'):
@@ -80,8 +83,10 @@ if __name__ == '__main__':
         exit(1)
 
     # establish communication with dpo
-    rm = visa.ResourceManager("@py")
+    rm = visa.ResourceManager()
     dpo = rm.open_resource('TCPIP::%s::INSTR' % args.ip_address)
+
+    print(dir(dpo))
 
     settings = get_settings(dpo)
 
@@ -126,9 +131,9 @@ if __name__ == '__main__':
     if args.timeoffset:
         dpo.write(':TIMebase:POSition {}'.format(args.timeoffset*1e-9))
     # fast frame/segmented acquisition mode
-    dpo.write(':ACQuire:MODE SEGMented')
+    #dpo.write(':ACQuire:MODE SEGMented')
     # number of segments to acquire
-    dpo.write(':ACQuire:SEGMented:COUNt {}'.format(args.numEvents))
+    #dpo.write(':ACQuire:SEGMented:COUNt {}'.format(args.numEvents))
     # interpolation is set off (otherwise its set to auto, which cause errors downstream)
     dpo.write(':ACQuire:INTerpolate 0')
 
@@ -176,48 +181,79 @@ if __name__ == '__main__':
     while not is_done(dpo):
         time.sleep(0.1)
 
-    dpo.write('*CLS;:SINGle')
-    start = time.time()
-    end_early = False
-    for i in count():
-        if i % 10 == 0:
-            print(".",end='')
-            sys.stdout.flush()
+    print("done setting up")
 
-        if int(dpo.query(':ADER?')) == 1: 
-            print("\nAcquisition complete")
-            break
-        else:
-            time.sleep(0.1)
-            if args.timeout is not None and time.time() - start > args.timeout:
-                end_early = True
-                dpo.write(':STOP')
-                while not is_done(dpo):
-                    time.sleep(0.1)
-                print()
-                break
+    #dpo.write('*CLS;:SINGle')
+    #start = time.time()
+    #end_early = False
+    #for i in count():
+    #    if i % 10 == 0:
+    #        print(".",end='')
+    #        sys.stdout.flush()
 
-    end = time.time()
+    #    if int(dpo.query(':ADER?')) == 1: 
+    #        print("\nAcquisition complete")
+    #        break
+    #    else:
+    #        time.sleep(0.1)
+    #        if args.timeout is not None and time.time() - start > args.timeout:
+    #            end_early = True
+    #            dpo.write(':STOP')
+    #            while not is_done(dpo):
+    #                time.sleep(0.1)
+    #            print()
+    #            break
 
-    duration = end - start
-    trigRate = float(args.numEvents)/duration
+    #end = time.time()
 
-    if not end_early:
-        print("Run duration: %0.2f s. Trigger rate: %.2f Hz" % (duration,trigRate))
-    else:
-        print("Run duration: %0.2f s. Trigger rate: unknown" % (duration))
+    #duration = end - start
+    #trigRate = float(args.numEvents)/duration
 
-    output_path = 'C:\\Users\\Public'
-    # save all segments (as opposed to just the current segment)
-    dpo.write(':DISK:SEGMented ALL')
+    #if not end_early:
+    #    print("Run duration: %0.2f s. Trigger rate: %.2f Hz" % (duration,trigRate))
+    #else:
+    #    print("Run duration: %0.2f s. Trigger rate: unknown" % (duration))
 
-    while not is_done(dpo):
-        time.sleep(0.1)
+    #output_path = 'C:\\Users\\Public'
+    ## save all segments (as opposed to just the current segment)
+    #dpo.write(':DISK:SEGMented ALL')
 
-    for i in range(1,5):
-        dpo.write(':DISK:SAVE:WAVeform CHANnel%i "%s\\run%i",%s,ON' % (i,output_path,args.runNumber,args.format))
-        while not is_done(dpo):
-            time.sleep(0.1)
+
+    print("system header off")
+    dpo.write(":system:header off")
+    print("ascii")
+    dpo.write(":WAVeform:format ASCII")
+    print("xinc")
+    xinc = float(dpo.query(":WAVeform:xincrement?"))
+    print("xorig")
+    xorg = float(dpo.query(":WAVeform:xorigin?"))
+    print("n points")
+    n = float(dpo.query(":WAVeform:points?"))
+    x = xorg + np.linspace(0,xinc*n,n)
+
+    f = h5py.File(args.output,"w")
+    try:
+	enabled_channels = []
+	for i in range(1,5):
+	    if int(dpo.query(":CHANnel%i:display?" % i)) == 1:
+		enabled_channels.append(i)
+		f.create_dataset("channel%i" % i, (args.numEvents, n), dtype='f4')
+
+	print("enabled channels = ", enabled_channels)
+	for i in range(args.numEvents):
+	    dpo.write(':digitize')
+	    for j in enabled_channels:
+		dpo.write(":WAVeform:source channel%i" % j)
+		f['channel%i' % j][i] = np.array(map(float,dpo.query(":WAVeform:DATA?").split(',')[:-1]))
+    finally:
+	f.close()
+
+    #for i in range(1,5):
+    #    print(':DISK:SAVE:WAVeform CHANnel%i ,"%s\\run_%i_ch%i",%s,ON' % (i,output_path,args.runNumber,i,args.format))
+    #    dpo.write(':DISK:SAVE:WAVeform CHANnel%i ,"%s\\run_%i_ch%i",%s,ON' % (i,output_path,args.runNumber,i,args.format))
+    #    time.sleep(1)
+    #    while not is_done(dpo):
+    #        time.sleep(0.1)
 
     dpo.write(':ACQuire:MODE RTIMe')
 
