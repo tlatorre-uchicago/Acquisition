@@ -1,5 +1,6 @@
 import h5py
 import numpy as np
+import matplotlib.pyplot as plt
 
 def get_times(x, data):
     min = np.min(data,axis=-1)
@@ -9,7 +10,12 @@ def get_times(x, data):
 def get_window(x, data):
     t = get_times(x,data)
     mean_hit_time = np.mean(t)
-    return np.searchsorted(x,[mean_hit_time-10,mean_hit_time+100])
+    a, b = np.searchsorted(x,[mean_hit_time-10,mean_hit_time+100])
+    if a < 0:
+	a = 0
+    if b > len(x) - 1:
+	b = len(x) - 1
+    return a, b
 
 def integrate(x, data):
     """
@@ -18,11 +24,11 @@ def integrate(x, data):
     a, b = get_window(x,data)
     # i = v/r
     # divide by 50 ohms to convert to a charge
-    return -np.trapz(data[a:b],x=x[a:b])/50.0/1000.0
-    
+    return -np.trapz(data[:,a:b],x=x[a:b])*1000/50.0
 
 if __name__ == '__main__':
     from argparse import ArgumentParser
+    import ROOT
 
     parser = ArgumentParser(description='Analyze data from the Agilent scope')
     parser.add_argument('filenames',nargs='+',help='input filenames (hdf5 format)')
@@ -33,10 +39,21 @@ if __name__ == '__main__':
     for filename in args.filenames:
         with h5py.File(filename) as f:
             x = f.attrs['xorg'] + np.linspace(0,f.attrs['xinc']*f.attrs['points'],f.attrs['points'])
+	    x *= 1e9
             for channel in f:
                 charge[channel] = integrate(x,f[channel])
 
+    f = ROOT.TFile(args.output,"recreate")
+    for channel in charge:
+	h = ROOT.TH1D(channel,"Charge Integral for %s" % channel,110,-10,110)
+	for x in charge[channel]:
+	    h.Fill(x)
+	#h.SetDirectory(f)
+	h.Write()
+    f.Close()
+
     for name in charge:
-        plt.hist(charge[name],bins=100)
+        plt.hist(charge[name],bins=100,histtype='step',label=name)
     plt.xlabel("Charge (pC)")
+    plt.legend()
     plt.show()

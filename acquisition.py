@@ -86,8 +86,6 @@ if __name__ == '__main__':
     rm = visa.ResourceManager()
     dpo = rm.open_resource('TCPIP::%s::INSTR' % args.ip_address)
 
-    print(dir(dpo))
-
     settings = get_settings(dpo)
 
     dpo.timeout = 3000000
@@ -183,16 +181,16 @@ if __name__ == '__main__':
 
     # x = xorg + np.linspace(0,xinc*n,n)
     f = h5py.File(args.output,"w")
-    f.attrx['xinc'] = xinc
-    f.attrx['xorg'] = xorg
-    f.attrx['points'] = points
+    f.attrs['xinc'] = xinc
+    f.attrs['xorg'] = xorg
+    f.attrs['points'] = points
 
     try:
         enabled_channels = []
         for i in range(1,5):
             if int(dpo.query(":CHANnel%i:display?" % i)) == 1:
                 enabled_channels.append(i)
-            f.create_dataset("channel%i" % i, (args.numEvents, n), dtype='f4')
+		f.create_dataset("channel%i" % i, (args.numEvents, points), dtype='f4')
 
         for i in range(args.numEvents):
             if i % 10 == 0:
@@ -203,6 +201,7 @@ if __name__ == '__main__':
             for j in enabled_channels:
                 dpo.write(":WAVeform:source channel%i" % j)
             f['channel%i' % j][i] = np.array(map(float,dpo.query(":WAVeform:DATA?").split(',')[:-1]))
+	print()
     finally:
         f.close()
 
