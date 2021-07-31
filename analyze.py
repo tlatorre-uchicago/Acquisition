@@ -35,6 +35,7 @@ if __name__ == '__main__':
     parser.add_argument('-o','--output', default=None, help='output file name', required=True)
     args = parser.parse_args()
 
+    plt.figure()
     charge = {}
     for filename in args.filenames:
         with h5py.File(filename) as f:
@@ -42,6 +43,7 @@ if __name__ == '__main__':
 	    x *= 1e9
             for channel in f:
                 charge[channel] = integrate(x,f[channel])
+		plt.plot(f[channel][:10].T)
 
     f = ROOT.TFile(args.output,"recreate")
     for channel in charge:
@@ -52,6 +54,7 @@ if __name__ == '__main__':
 	h.Write()
     f.Close()
 
+    plt.figure()
     for name in charge:
         plt.hist(charge[name],bins=100,histtype='step',label=name)
     plt.xlabel("Charge (pC)")
