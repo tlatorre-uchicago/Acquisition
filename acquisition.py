@@ -190,7 +190,7 @@ if __name__ == '__main__':
         for i in range(1,5):
             if int(dpo.query(":CHANnel%i:display?" % i)) == 1:
                 enabled_channels.append(i)
-		f.create_dataset("channel%i" % i, (args.numEvents, points), dtype='f4')
+                f.create_dataset("channel%i" % i, (args.numEvents, points), dtype='f4')
 
         for i in range(args.numEvents):
             if i % 10 == 0:

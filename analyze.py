@@ -3,18 +3,27 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def get_times(x, data):
+    """
+    Returns the times at which the waveforms in `x` cross 40% of their minimum
+    value.
+    """
     min = np.min(data,axis=-1)
     threshold = 0.4*min
     return x[np.argmin(data > threshold[:,np.newaxis],axis=-1)]
 
 def get_window(x, data):
+    """
+    Returns the indices start and stop over which you should integrate the
+    waveforms in `x`. The window is found by calculating the median hit time
+    for all pulses in `x` and then going back 10 ns and forward 100 ns.
+    """
     t = get_times(x,data)
     mean_hit_time = np.median(t)
     a, b = np.searchsorted(x,[mean_hit_time-10,mean_hit_time+100])
     if a < 0:
-	a = 0
+        a = 0
     if b > len(x) - 1:
-	b = len(x) - 1
+        b = len(x) - 1
     return a, b
 
 def integrate(x, data):
@@ -40,20 +49,20 @@ if __name__ == '__main__':
     for filename in args.filenames:
         with h5py.File(filename) as f:
             x = f.attrs['xorg'] + np.linspace(0,f.attrs['xinc']*f.attrs['points'],f.attrs['points'])
-	    x *= 1e9
+            x *= 1e9
             for channel in f:
                 charge[channel] = integrate(x,f[channel])
-		plt.plot(x,f[channel][:10].T)
-		a, b = get_window(x,f[channel])
-		plt.axvline(x[a])
-		plt.axvline(x[b])
+                plt.plot(x,f[channel][:10].T)
+                a, b = get_window(x,f[channel])
+                plt.axvline(x[a])
+                plt.axvline(x[b])
 
     f = ROOT.TFile(args.output,"recreate")
     for channel in charge:
-	h = ROOT.TH1D(channel,"Charge Integral for %s" % channel,110,-10,110)
-	for x in charge[channel]:
-	    h.Fill(x)
-	h.Write()
+        h = ROOT.TH1D(channel,"Charge Integral for %s" % channel,110,-10,110)
+        for x in charge[channel]:
+            h.Fill(x)
+        h.Write()
     f.Close()
 
     plt.figure()
