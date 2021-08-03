@@ -196,10 +196,14 @@ if __name__ == '__main__':
                 print(".",end='')
                 sys.stdout.flush()
 
-            dpo.write(':digitize')
-            for j in enabled_channels:
-                dpo.write(":WAVeform:source channel%i" % j)
-                f['channel%i' % j][i] = np.array(map(float,dpo.query(":WAVeform:DATA?").split(',')[:-1]))
+            try:
+                dpo.write(':digitize')
+                for j in enabled_channels:
+                    dpo.write(":WAVeform:source channel%i" % j)
+                    f['channel%i' % j][i] = np.array(map(float,dpo.query(":WAVeform:DATA?").split(',')[:-1]))
+            except visa.error.Error as e:
+                print("visa error: %s" % str(e))
+                continue
         print()
     finally:
         f.close()
