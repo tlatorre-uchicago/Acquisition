@@ -94,8 +94,8 @@ if __name__ == '__main__':
     print("*idn? = %s" % dpo.query('*idn?').strip())
 
     if args.settings:
-        with open(args.settings) as f:
-            settings = json.load(f)
+        with h5py.open(args.settings) as f:
+            settings = dict(f['settings'].attrs)
         print("loading settings from %s" % args.settings)
         set_settings(dpo,settings)
 
@@ -112,11 +112,6 @@ if __name__ == '__main__':
 
             with open('runNumber.txt','w') as file:
                 file.write("%i" % args.runNumber)
-
-    print("Saving settings to run%i_settings.json" % args.runNumber)
-
-    with open("run%i_settings.json" % args.runNumber,'w') as f:
-        json.dump(settings,f)
 
     dpo.write(':STOP')
 
@@ -185,6 +180,11 @@ if __name__ == '__main__':
     f.attrs['xorg'] = xorg
     f.attrs['points'] = points
 
+    f.create_group("settings")
+
+    for key, value in settings.iteritems():
+        f['settings'].attrs[key] = value
+
     try:
         enabled_channels = []
         for i in range(1,5):
@@ -201,7 +201,7 @@ if __name__ == '__main__':
             for j in enabled_channels:
                 dpo.write(":WAVeform:source channel%i" % j)
             f['channel%i' % j][i] = np.array(map(float,dpo.query(":WAVeform:DATA?").split(',')[:-1]))
-	print()
+        print()
     finally:
         f.close()
 
