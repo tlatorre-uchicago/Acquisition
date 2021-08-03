@@ -51,6 +51,8 @@ if __name__ == '__main__':
             x = f.attrs['xorg'] + np.linspace(0,f.attrs['xinc']*f.attrs['points'],f.attrs['points'])
             x *= 1e9
             for channel in f:
+                if channel == 'settings':
+                    continue
                 charge[channel] = integrate(x,f[channel])
                 plt.plot(x,f[channel][:10].T)
                 a, b = get_window(x,f[channel])

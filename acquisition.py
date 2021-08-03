@@ -48,6 +48,10 @@ def set_settings(dpo, settings):
 def is_done(dpo):
     return int(dpo.query("*OPC?")) == 1
 
+def wait_till_done(dpo):
+    while not is_done(dpo):
+        time.sleep(0.1)
+
 if __name__ == '__main__':
     from argparse import ArgumentParser
 
@@ -88,13 +92,10 @@ if __name__ == '__main__':
 
     settings = get_settings(dpo)
 
-    dpo.timeout = 3000000
-    dpo.encoding = 'latin_1'
-
     print("*idn? = %s" % dpo.query('*idn?').strip())
 
     if args.settings:
-        with h5py.open(args.settings) as f:
+        with h5py.File(args.settings,'r') as f:
             settings = dict(f['settings'].attrs)
         print("loading settings from %s" % args.settings)
         set_settings(dpo,settings)
@@ -115,8 +116,7 @@ if __name__ == '__main__':
 
     dpo.write(':STOP')
 
-    while not is_done(dpo):
-        time.sleep(0.1)
+    wait_till_done(dpo)
 
     if args.sampleRate:
         dpo.write(':ACQuire:SRATe:ANALog {}'.format(args.sampleRate*1e9))
@@ -163,8 +163,7 @@ if __name__ == '__main__':
         dpo.write(':TRIGger:EDGE:SLOPe %s;' % args.trigSlope)
 
     # configure data transfer settings
-    while not is_done(dpo):
-        time.sleep(0.1)
+    wait_till_done(dpo)
 
     print("done setting up")
 
@@ -200,7 +199,7 @@ if __name__ == '__main__':
             dpo.write(':digitize')
             for j in enabled_channels:
                 dpo.write(":WAVeform:source channel%i" % j)
-            f['channel%i' % j][i] = np.array(map(float,dpo.query(":WAVeform:DATA?").split(',')[:-1]))
+                f['channel%i' % j][i] = np.array(map(float,dpo.query(":WAVeform:DATA?").split(',')[:-1]))
         print()
     finally:
         f.close()
