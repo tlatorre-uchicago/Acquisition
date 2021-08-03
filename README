@@ -36,3 +36,15 @@ $ python acquisition.py --ip [ip address of scope] -n [number of events] --setti
 ```
 
 which will load the settings from that run before taking data.
+
+Analyzing the Data
+------------------
+
+To integrate the waveforms taken with the acquisition script, just run:
+
+```console
+$ python analyze.py [input filename] -o [output filename]
+```
+
+The output file is a ROOT file which contains histograms of the charge for each
+channel in the input file.
