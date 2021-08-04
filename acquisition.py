@@ -4,9 +4,11 @@ import os
 import time
 import shutil
 import datetime
-import visa
+import pyvisa as visa
 from itertools import count
 import json
+import numpy as np
+import h5py
 
 SETTINGS = [\
     ':TIMebase:RANGe',
@@ -46,6 +48,10 @@ def set_settings(dpo, settings):
 def is_done(dpo):
     return int(dpo.query("*OPC?")) == 1
 
+def wait_till_done(dpo):
+    while not is_done(dpo):
+        time.sleep(0.1)
+
 if __name__ == '__main__':
     from argparse import ArgumentParser
 
@@ -69,6 +75,7 @@ if __name__ == '__main__':
     parser.add_argument('--format', default='bin', help='output format (h5 or bin)')
     parser.add_argument('--ip-address', help='ip address of scope', required=True)
     parser.add_argument('--settings', default=None, help='json file with settings', required=False)
+    parser.add_argument('-o','--output', default=None, help='output file name', required=True)
     args = parser.parse_args()
 
     if args.format not in ('h5','bin'):
@@ -80,19 +87,16 @@ if __name__ == '__main__':
         exit(1)
 
     # establish communication with dpo
-    rm = visa.ResourceManager("@py")
+    rm = visa.ResourceManager()
     dpo = rm.open_resource('TCPIP::%s::INSTR' % args.ip_address)
 
     settings = get_settings(dpo)
 
-    dpo.timeout = 3000000
-    dpo.encoding = 'latin_1'
-
     print("*idn? = %s" % dpo.query('*idn?').strip())
 
     if args.settings:
-        with open(args.settings) as f:
-            settings = json.load(f)
+        with h5py.File(args.settings,'r') as f:
+            settings = dict(f['settings'].attrs)
         print("loading settings from %s" % args.settings)
         set_settings(dpo,settings)
 
@@ -110,29 +114,15 @@ if __name__ == '__main__':
             with open('runNumber.txt','w') as file:
                 file.write("%i" % args.runNumber)
 
-    print("Saving settings to run%i_settings.json" % args.runNumber)
-
-    with open("run%i_settings.json" % args.runNumber,'w') as f:
-        json.dump(settings,f)
-
     dpo.write(':STOP')
 
-    while not is_done(dpo):
-        time.sleep(0.1)
+    wait_till_done(dpo)
 
     if args.sampleRate:
         dpo.write(':ACQuire:SRATe:ANALog {}'.format(args.sampleRate*1e9))
     # offset
     if args.timeoffset:
         dpo.write(':TIMebase:POSition {}'.format(args.timeoffset*1e-9))
-    # fast frame/segmented acquisition mode
-    dpo.write(':ACQuire:MODE SEGMented')
-    # number of segments to acquire
-    dpo.write(':ACQuire:SEGMented:COUNt {}'.format(args.numEvents))
-    # interpolation is set off (otherwise its set to auto, which cause errors downstream)
-    dpo.write(':ACQuire:INTerpolate 0')
-
-    dpo.write(':ACQuire:BANDwidth 5.E8')
 
     if args.vScale1:
         dpo.write(':CHANnel1:SCALe %.2f'.format(args.vScale1))
@@ -173,51 +163,50 @@ if __name__ == '__main__':
         dpo.write(':TRIGger:EDGE:SLOPe %s;' % args.trigSlope)
 
     # configure data transfer settings
-    while not is_done(dpo):
-        time.sleep(0.1)
+    wait_till_done(dpo)
 
-    dpo.write('*CLS;:SINGle')
-    start = time.time()
-    end_early = False
-    for i in count():
-        if i % 10 == 0:
-            print(".",end='')
-            sys.stdout.flush()
+    print("done setting up")
 
-        if int(dpo.query(':ADER?')) == 1: 
-            print("\nAcquisition complete")
-            break
-        else:
-            time.sleep(0.1)
-            if args.timeout is not None and time.time() - start > args.timeout:
-                end_early = True
-                dpo.write(':STOP')
-                while not is_done(dpo):
-                    time.sleep(0.1)
-                print()
-                break
+    dpo.write(":system:header off")
+    dpo.write(":WAVeform:format ASCII")
+    xinc = float(dpo.query(":WAVeform:xincrement?"))
+    xorg = float(dpo.query(":WAVeform:xorigin?"))
+    points = float(dpo.query(":WAVeform:points?"))
 
-    end = time.time()
+    # x = xorg + np.linspace(0,xinc*n,n)
+    f = h5py.File(args.output,"w")
+    f.attrs['xinc'] = xinc
+    f.attrs['xorg'] = xorg
+    f.attrs['points'] = points
 
-    duration = end - start
-    trigRate = float(args.numEvents)/duration
+    f.create_group("settings")
 
-    if not end_early:
-        print("Run duration: %0.2f s. Trigger rate: %.2f Hz" % (duration,trigRate))
-    else:
-        print("Run duration: %0.2f s. Trigger rate: unknown" % (duration))
+    for key, value in settings.iteritems():
+        f['settings'].attrs[key] = value
 
-    output_path = 'C:\\Users\\Public'
-    # save all segments (as opposed to just the current segment)
-    dpo.write(':DISK:SEGMented ALL')
+    try:
+        enabled_channels = []
+        for i in range(1,5):
+            if int(dpo.query(":CHANnel%i:display?" % i)) == 1:
+                enabled_channels.append(i)
+                f.create_dataset("channel%i" % i, (args.numEvents, points), dtype='f4')
 
-    while not is_done(dpo):
-        time.sleep(0.1)
+        for i in range(args.numEvents):
+            if i % 10 == 0:
+                print(".",end='')
+                sys.stdout.flush()
 
-    for i in range(1,5):
-        dpo.write(':DISK:SAVE:WAVeform CHANnel%i ,"%s\\run%i_ch%i",%s,ON' % (i,output_path,args.runNumber,i,args.format))
-        while not is_done(dpo):
-            time.sleep(0.1)
+            try:
+                dpo.write(':digitize')
+                for j in enabled_channels:
+                    dpo.write(":WAVeform:source channel%i" % j)
+                    f['channel%i' % j][i] = np.array(map(float,dpo.query(":WAVeform:DATA?").split(',')[:-1]))
+            except visa.Error as e:
+                print("visa error: %s" % str(e))
+                continue
+        print()
+    finally:
+        f.close()
 
     dpo.write(':ACQuire:MODE RTIMe')
 
