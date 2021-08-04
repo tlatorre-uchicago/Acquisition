@@ -1,6 +1,30 @@
 Acquisition scripts for taking data from Keysight scopes
 ========================================================
 
+Installation
+------------
+
+To install everything you need access to the python libraries: numpy, h5py,
+matplotlib, and pyvisa. To install these globally you can ask your system
+administrator, or you can install them in a local virtual environment like:
+
+```console
+$ virtualenv ~/acquisition
+$ source ~/acquisition/bin/activate
+$ pip install numpy h5py matplotlib pyvisa
+```
+
+And then you just need to remember to run
+
+```console
+$ source ~/acquisition/bin/activate
+```
+
+before running any of the scripts.
+
+Taking Data
+-----------
+
 To take data, run:
 
 ```console

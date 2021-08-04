@@ -1,6 +1,5 @@
 import h5py
 import numpy as np
-import matplotlib.pyplot as plt
 
 def iqr(x):
     return np.percentile(x,75) - np.percentile(x,25)
@@ -59,6 +58,7 @@ def get_bins(x):
 if __name__ == '__main__':
     from argparse import ArgumentParser
     import ROOT
+    import matplotlib.pyplot as plt
 
     parser = ArgumentParser(description='Analyze data from the Agilent scope')
     parser.add_argument('filenames',nargs='+',help='input filenames (hdf5 format)')
