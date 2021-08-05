@@ -74,7 +74,7 @@ if __name__ == '__main__':
 
     parser = ArgumentParser(description='Take data from the Agilent scope')
     parser.add_argument('-n','--numEvents', type=int, default=500, help='number of events')
-    parser.add_argument('--timeout', type=int, default=None, help='timeout')
+    parser.add_argument('--timeout', type=int, default=2000, help='timeout (ms)')
     parser.add_argument('--ip-address', help='ip address of scope', required=True)
     parser.add_argument('--settings', default=None, help='json file with settings', required=False)
     parser.add_argument('-o','--output', default=None, help='output file name', required=True)

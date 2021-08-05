@@ -30,7 +30,7 @@ if __name__ == '__main__':
     from argparse import ArgumentParser
 
     parser = ArgumentParser(description='Take data from the Agilent scope')
-    parser.add_argument('--timeout', type=int, default=None, help='timeout')
+    parser.add_argument('--timeout', type=int, default=2000, help='timeout (ms)')
     parser.add_argument('--ip-address', help='ip address of scope', required=True)
     parser.add_argument('settings', help='hdf5 output file')
     args = parser.parse_args()
