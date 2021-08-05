@@ -74,6 +74,7 @@ if __name__ == '__main__':
 
     parser = ArgumentParser(description='Take data from the Agilent scope')
     parser.add_argument('-n','--numEvents', type=int, default=500, help='number of events')
+    parser.add_argument('--timeout', type=int, default=None, help='timeout')
     parser.add_argument('--ip-address', help='ip address of scope', required=True)
     parser.add_argument('--settings', default=None, help='json file with settings', required=False)
     parser.add_argument('-o','--output', default=None, help='output file name', required=True)
@@ -83,9 +84,12 @@ if __name__ == '__main__':
     rm = visa.ResourceManager()
     dpo = rm.open_resource('TCPIP::%s::INSTR' % args.ip_address)
 
-    settings = get_settings(dpo)
+    if args.timeout:
+        dpo.timeout = args.timeout
 
     print("*idn? = %s" % dpo.query('*idn?').strip())
+
+    settings = get_settings(dpo)
 
     if args.settings:
         with h5py.File(args.settings,'r') as f:
@@ -99,7 +103,6 @@ if __name__ == '__main__':
 
     dpo.write(":system:header off")
     dpo.write(":WAVeform:format ASCII")
-    dpo.write(":WAVeform:streaming ON")
     xinc = float(dpo.query(":WAVeform:xincrement?"))
     xorg = float(dpo.query(":WAVeform:xorigin?"))
     points = float(dpo.query(":WAVeform:points?"))

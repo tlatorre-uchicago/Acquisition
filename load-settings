@@ -30,6 +30,7 @@ if __name__ == '__main__':
     from argparse import ArgumentParser
 
     parser = ArgumentParser(description='Take data from the Agilent scope')
+    parser.add_argument('--timeout', type=int, default=None, help='timeout')
     parser.add_argument('--ip-address', help='ip address of scope', required=True)
     parser.add_argument('settings', help='hdf5 output file')
     args = parser.parse_args()
@@ -37,6 +38,9 @@ if __name__ == '__main__':
     # establish communication with dpo
     rm = visa.ResourceManager()
     dpo = rm.open_resource('TCPIP::%s::INSTR' % args.ip_address)
+
+    if args.timeout:
+        dpo.timeout = args.timeout
 
     print("*idn? = %s" % dpo.query('*idn?').strip())
 
