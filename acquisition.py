@@ -1,14 +1,4 @@
 from __future__ import print_function
-import sys
-import os
-import time
-import shutil
-import datetime
-import pyvisa as visa
-from itertools import count
-import json
-import numpy as np
-import h5py
 
 SETTINGS = [\
     ':TIMebase:RANGe',
@@ -32,6 +22,14 @@ SETTINGS = [\
 ]
 
 def get_settings(dpo):
+    """
+    Get all the current settings of the scope and return them as a dictionary
+    of key, value pairs. Most of the settings are simple key, value pairs which
+    indicate the setting and the value. We have one hack where since the
+    ":TRIGger:LEVel" command requires a channel argument we store the key as
+    ":TRIGger:LEVel CHANnel1," so that we can use the same simple method of setting
+    the value on the scope by sending the command "key value".
+    """
     values = {}
     for setting in SETTINGS:
         if setting == ':TRIGger:LEVel':
@@ -42,49 +40,44 @@ def get_settings(dpo):
     return values
 
 def set_settings(dpo, settings):
+    """
+    Set the settings in the dictionary `settings` on the scope. Most of the
+    settings are simple key, value pairs but some have a more complicated
+    format for the key (see get_settings()).
+    """
     for key, value in settings.iteritems():
         dpo.write('%s %s' % (key, value))
 
 def is_done(dpo):
+    """
+    Returns True if the scope is done completing the current operation.
+    """
     return int(dpo.query("*OPC?")) == 1
 
 def wait_till_done(dpo):
+    """
+    Waits until the scope is done completing the current operation.
+    """
     while not is_done(dpo):
         time.sleep(0.1)
 
 if __name__ == '__main__':
+    import sys
+    import os
+    import time
+    import pyvisa as visa
+    from itertools import count
+    import numpy as np
+    import h5py
     from argparse import ArgumentParser
 
     parser = ArgumentParser(description='Take data from the Agilent scope')
     parser.add_argument('-n','--numEvents', type=int, default=500, help='number of events')
-    parser.add_argument('-r','--runNumber', type=int, default=None, help='run number')
-    parser.add_argument('--sampleRate', type=float, default=None, help='Sampling rate in GHz')
-    parser.add_argument('--trigCh', type=str, default=None, help="trigger Channel (1,2,3,4, or 'AUX')")
-    parser.add_argument('--trig', type=float, default=None, help='trigger value in V')
-    parser.add_argument('--trigSlope', default=None, help='trigger slope should be "POSitive or NEGative"')
-    parser.add_argument('--vScale1', type=float, default=None, help='Vertical scale ch. 1, (volts/div)')
-    parser.add_argument('--vScale2', type=float, default=None, help='Vertical scale ch. 2, (volts/div)')
-    parser.add_argument('--vScale3', type=float, default=None, help='Vertical scale ch. 3, (volts/div)')
-    parser.add_argument('--vScale4', type=float, default=None, help='Vertical scale ch. 4, (volts/div)')
-    parser.add_argument('--vOffset1', type=float, default=None, help='Vertical Offset ch. 1, (volts)')
-    parser.add_argument('--vOffset2', type=float, default=None, help='Vertical Offset ch. 2, (volts)')
-    parser.add_argument('--vOffset3', type=float, default=None, help='Vertical Offset ch. 3, (volts)')
-    parser.add_argument('--vOffset4', type=float, default=None, help='Vertical Offset ch. 4, (volts)')
-    parser.add_argument('--timeoffset', type=float, default=None, help='Offset to compensate for trigger delay (ns). This is the delta T between the center of the acquisition window and the trigger.')
     parser.add_argument('--timeout', type=float, default=None, help='Max run duration [s]')
-    parser.add_argument('--format', default='bin', help='output format (h5 or bin)')
     parser.add_argument('--ip-address', help='ip address of scope', required=True)
     parser.add_argument('--settings', default=None, help='json file with settings', required=False)
     parser.add_argument('-o','--output', default=None, help='output file name', required=True)
     args = parser.parse_args()
-
-    if args.format not in ('h5','bin'):
-        print("format must be either 'h5' or 'bin'",file=sys.stderr)
-        exit(1)
-
-    if args.trigSlope and args.trigSlope not in ("POSitive","NEGative"):
-        print("trigSlope must be one of either 'POSitive' or 'NEGative'")
-        exit(1)
 
     # establish communication with dpo
     rm = visa.ResourceManager()
@@ -100,72 +93,7 @@ if __name__ == '__main__':
         print("loading settings from %s" % args.settings)
         set_settings(dpo,settings)
 
-    # increment the last runNumber by 1
-    if args.runNumber is None:
-        if os.path.exists('runNumber.txt'):
-            with open('runNumber.txt','r') as file:
-                args.runNumber = int(file.read())+1
-
-            with open('runNumber.txt','w') as file:
-                file.write("%i" % args.runNumber)
-        else:
-            args.runNumber = 1
-
-            with open('runNumber.txt','w') as file:
-                file.write("%i" % args.runNumber)
-
-    dpo.write(':STOP')
-
     wait_till_done(dpo)
-
-    if args.sampleRate:
-        dpo.write(':ACQuire:SRATe:ANALog {}'.format(args.sampleRate*1e9))
-    # offset
-    if args.timeoffset:
-        dpo.write(':TIMebase:POSition {}'.format(args.timeoffset*1e-9))
-
-    if args.vScale1:
-        dpo.write(':CHANnel1:SCALe %.2f'.format(args.vScale1))
-    if args.vScale2:
-        dpo.write(':CHANnel2:SCALe %.2f'.format(args.vScale2))
-    if args.vScale3:
-        dpo.write(':CHANnel3:SCALe %.2f'.format(args.vScale3))
-    if args.vScale4:
-        dpo.write(':CHANnel4:SCALe %.2f'.format(args.vScale4))
-
-    if args.vOffset1:
-        dpo.write(':CHANnel1:OFFSet %.2f'.format(args.vOffset1))
-    if args.vOffset2:
-        dpo.write(':CHANnel2:OFFSet %.2f'.format(args.vOffset2))
-    if args.vOffset3:
-        dpo.write(':CHANnel3:OFFSet %.2f'.format(args.vOffset3))
-    if args.vOffset4:
-        dpo.write(':CHANnel4:OFFSet %.2f'.format(args.vOffset4))
-
-    dpo.write(':TRIGger:MODE EDGE;')
-
-    if args.trigCh:
-        if args.trigCh == "AUX":
-            pass
-        else:
-            try:
-                args.trigCh = 'CHANnel%i' % args.trigCh
-            except TypeError:
-                print("trigger channel must be either 1, 2, 3, 4, or 'AUX'",file=sys.stderr)
-                sys.exit(1)
-
-        dpo.write(':TRIGger:EDGE:SOURce %s' % args.trigCh)
-
-    if args.trigCh and args.trig:
-        dpo.write(':TRIGger:LEVel %s, %f' % (args.trigCh, args.trig))
-
-    if args.trigSlope:
-        dpo.write(':TRIGger:EDGE:SLOPe %s;' % args.trigSlope)
-
-    # configure data transfer settings
-    wait_till_done(dpo)
-
-    print("done setting up")
 
     dpo.write(":system:header off")
     dpo.write(":WAVeform:format ASCII")
@@ -207,8 +135,6 @@ if __name__ == '__main__':
         print()
     finally:
         f.close()
-
-    dpo.write(':ACQuire:MODE RTIMe')
 
     set_settings(dpo,settings)
 
