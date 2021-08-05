@@ -53,7 +53,7 @@ def get_bins(x):
     https://en.wikipedia.org/wiki/Freedman%E2%80%93Diaconis_rule.
     """
     bin_width = 2*iqr(x)/len(x)**(1/3.0)
-    return np.arange(np.min(x),np.min(x),bin_width)
+    return np.arange(np.min(x),np.max(x),bin_width)
 
 if __name__ == '__main__':
     from argparse import ArgumentParser
