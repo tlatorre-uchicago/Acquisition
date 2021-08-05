@@ -99,6 +99,7 @@ if __name__ == '__main__':
 
     dpo.write(":system:header off")
     dpo.write(":WAVeform:format ASCII")
+    dpo.write(":WAVeform:streaming ON")
     xinc = float(dpo.query(":WAVeform:xincrement?"))
     xorg = float(dpo.query(":WAVeform:xorigin?"))
     points = float(dpo.query(":WAVeform:points?"))
@@ -132,7 +133,7 @@ if __name__ == '__main__':
                     dpo.write(":WAVeform:source channel%i" % j)
                     f['channel%i' % j][i] = np.array(map(float,dpo.query(":WAVeform:DATA?").split(',')[:-1]))
             except visa.Error as e:
-                print("visa error: %s" % str(e))
+                print("\nvisa error: %s" % str(e))
                 continue
         print()
     finally:
