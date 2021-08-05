@@ -28,7 +28,7 @@ Taking Data
 To take data, run:
 
 ```console
-$ python acquisition.py --ip [ip address of scope] -n [number of events] -o [output filename]
+$ ./acquire-waveforms --ip [ip address of scope] -n [number of events] -o [output filename]
 ```
 
 This will save the waveforms for all visible channels in the output file in the
@@ -40,7 +40,7 @@ file each time you run the script.  If you want to reload the settings from a
 previous run you can pass the `--settings` argument like:
 
 ```console
-$ python acquisition.py --ip [ip address of scope] -n [number of events] --settings [previous output filename]
+$ ./acquire-waveforms --ip [ip address of scope] -n [number of events] --settings [previous output filename]
 ```
 
 which will load the settings from that run before taking data.
@@ -51,8 +51,17 @@ Analyzing the Data
 To integrate the waveforms taken with the acquisition script, just run:
 
 ```console
-$ python analyze.py [input filename] -o [output filename]
+$ ./analyze-waveforms [input filename] -o [output filename]
 ```
 
 The output file is a ROOT file which contains histograms of the charge for each
 channel in the input file.
+
+Loading Settings From a Previous Run
+------------------------------------
+
+You can load data from a previous run with the command:
+
+```console
+$ ./load-settings [output filename]
+```

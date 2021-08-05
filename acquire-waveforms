@@ -1,4 +1,6 @@
+#!/usr/bin/env python
 from __future__ import print_function
+import time
 
 SETTINGS = [\
     ':TIMebase:RANGe',
@@ -64,7 +66,6 @@ def wait_till_done(dpo):
 if __name__ == '__main__':
     import sys
     import os
-    import time
     import pyvisa as visa
     from itertools import count
     import numpy as np
@@ -73,7 +74,6 @@ if __name__ == '__main__':
 
     parser = ArgumentParser(description='Take data from the Agilent scope')
     parser.add_argument('-n','--numEvents', type=int, default=500, help='number of events')
-    parser.add_argument('--timeout', type=float, default=None, help='Max run duration [s]')
     parser.add_argument('--ip-address', help='ip address of scope', required=True)
     parser.add_argument('--settings', default=None, help='json file with settings', required=False)
     parser.add_argument('-o','--output', default=None, help='output file name', required=True)
@@ -94,6 +94,8 @@ if __name__ == '__main__':
         set_settings(dpo,settings)
 
     wait_till_done(dpo)
+
+    dpo.write(":ACQuire:MODE RTIMe")
 
     dpo.write(":system:header off")
     dpo.write(":WAVeform:format ASCII")

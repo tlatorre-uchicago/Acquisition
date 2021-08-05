@@ -1,0 +1,50 @@
+#!/usr/bin/env python
+from __future__ import print_function
+import time
+
+def set_settings(dpo, settings):
+    """
+    Set the settings in the dictionary `settings` on the scope. Most of the
+    settings are simple key, value pairs but some have a more complicated
+    format for the key (see get_settings()).
+    """
+    for key, value in settings.iteritems():
+        dpo.write('%s %s' % (key, value))
+
+def is_done(dpo):
+    """
+    Returns True if the scope is done completing the current operation.
+    """
+    return int(dpo.query("*OPC?")) == 1
+
+def wait_till_done(dpo):
+    """
+    Waits until the scope is done completing the current operation.
+    """
+    while not is_done(dpo):
+        time.sleep(0.1)
+
+if __name__ == '__main__':
+    import pyvisa as visa
+    import h5py
+    from argparse import ArgumentParser
+
+    parser = ArgumentParser(description='Take data from the Agilent scope')
+    parser.add_argument('--ip-address', help='ip address of scope', required=True)
+    parser.add_argument('settings', help='hdf5 output file')
+    args = parser.parse_args()
+
+    # establish communication with dpo
+    rm = visa.ResourceManager()
+    dpo = rm.open_resource('TCPIP::%s::INSTR' % args.ip_address)
+
+    print("*idn? = %s" % dpo.query('*idn?').strip())
+
+    with h5py.File(args.settings,'r') as f:
+        settings = dict(f['settings'].attrs)
+    print("loading settings from %s" % args.settings)
+    set_settings(dpo,settings)
+
+    wait_till_done(dpo)
+
+    dpo.close()
