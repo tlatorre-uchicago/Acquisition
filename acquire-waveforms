@@ -137,6 +137,14 @@ if __name__ == '__main__':
                     f['channel%i' % j][i] = np.array(map(float,dpo.query(":WAVeform:DATA?").split(',')[:-1]))
             except visa.Error as e:
                 print("\nvisa error: %s" % str(e))
+                # Now we try to flush the buffers on the scope so we don't get
+                # protocol errors if our command which timed out sends data
+                # later
+                time.sleep(1)
+                try:
+                    dpo.read_raw()
+                except Exception as e:
+                    pass
                 continue
         print()
     finally:
