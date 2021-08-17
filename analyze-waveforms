@@ -52,8 +52,11 @@ def get_bins(x):
     """
     Returns bins for the data `x` using the Freedman Diaconis rule. See
     https://en.wikipedia.org/wiki/Freedman%E2%80%93Diaconis_rule.
+    
+    The equation below returns bins using said rule. A smaller bin value than this was chosen after finetuning for better fitting results.
+    bin_width = 2*iqr(x)/(len(x)**(1/3.0))
     """
-    #bin_width = 2*iqr(x)/(len(x)**(1/3.0))
+    
     bin_width = 0.5*iqr(x)/(len(x)**(1/3.0))
     return np.arange(np.min(x),np.max(x),bin_width)
 
@@ -101,6 +104,11 @@ if __name__ == '__main__':
         
         if args.sodium:
             
+            """
+            Peak searching using the TSpectrum class. See ROOT documentation for details.
+            https://root.cern.ch/root/htmldoc/guides/spectrum/Spectrum.html#processing-and-visualization-functions
+            """
+            
             spec = ROOT.TSpectrum()
             n_pks = spec.Search(h, 0.8, "", 0.05)
             x_pos = spec.GetPositionX()
@@ -111,11 +119,15 @@ if __name__ == '__main__':
                 print
                 print(pk)
                 
+                # Finding fit window around peak using a threshold value.
+                
+                thres = 0.40
+                
                 win_lb = h.FindBin(pk[0])
                 win_ub = win_lb
-                while h.GetBinContent(win_lb) > 0.40 * pk[1]:
+                while h.GetBinContent(win_lb) > thres * pk[1]:
                     win_lb = win_lb - 1
-                while h.GetBinContent(win_ub) > 0.40 * pk[1]:
+                while h.GetBinContent(win_ub) > thres * pk[1]:
                     win_ub = win_ub + 1
                 print(bins[win_lb], h.GetBinContent(win_lb), bins[win_ub], h.GetBinContent(win_ub))
                 
@@ -158,22 +170,25 @@ if __name__ == '__main__':
                 print
                 print(pk)
                 
+                #Select threshold for fit window for each of the single photon peaks
+                thres = [0.2, 0.3, 0.4]
+                
                 win_lb = h.FindBin(pk[0])
                 win_ub = win_lb
                 if i == 0:
-                    while h.GetBinContent(win_lb) > 0.2 * pk[1]:
+                    while h.GetBinContent(win_lb) > thres[0] * pk[1]:
                         win_lb = win_lb - 1
-                    while h.GetBinContent(win_ub) > 0.2 * pk[1]:
+                    while h.GetBinContent(win_ub) > thres[0] * pk[1]:
                         win_ub = win_ub + 1
                 elif i == 1:
-                    while h.GetBinContent(win_lb) > 0.3 * pk[1]:
+                    while h.GetBinContent(win_lb) > thres[1] * pk[1]:
                         win_lb = win_lb - 1
-                    while h.GetBinContent(win_ub) > 0.3 * pk[1]:
+                    while h.GetBinContent(win_ub) > thres[1] * pk[1]:
                         win_ub = win_ub + 1
                 elif i == 2:
-                    while h.GetBinContent(win_lb) > 0.4 * pk[1]:
+                    while h.GetBinContent(win_lb) > thres[2] * pk[1]:
                         win_lb = win_lb - 1
-                    while h.GetBinContent(win_ub) > 0.4 * pk[1]:
+                    while h.GetBinContent(win_ub) > thres[2] * pk[1]:
                         win_ub = win_ub + 1
                 
                 print(bins[win_lb], h.GetBinContent(win_lb), bins[win_ub], h.GetBinContent(win_ub))
