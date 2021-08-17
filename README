@@ -51,11 +51,25 @@ Analyzing the Data
 To integrate the waveforms taken with the acquisition script, just run:
 
 ```console
-$ ./analyze-waveforms [input filename] -o [output filename]
+$ ./analyze-waveforms [input filename] -o [output filename] --plot
 ```
 
 The output file is a ROOT file which contains histograms of the charge for each
-channel in the input file.
+channel in the input file. Passing the --plot argument is optional and when passed will open the various fits and plots when the script is finished running.
+
+To fit the resulting histograms produced by the analysis script, run either:
+
+```console
+$ ./analyze-waveforms [input filename] -o [output filename] --plot --sodium
+```
+
+for sodium runs. Or:
+
+```console
+$ ./analyze-waveforms [input filename] -o [output filename] --plot --laser
+```
+
+for laser runs. Again, the plot argument is optional and will open up the various fits.
 
 Loading Settings From a Previous Run
 ------------------------------------
