@@ -27,7 +27,7 @@ def get_window(x, data, left=1, right=10):
     """
     Returns the indices start and stop over which you should integrate the
     waveforms in `x`. The window is found by calculating the median hit time
-    for all pulses in `x` and then going back 10 ns and forward 100 ns.
+    for all pulses in `x` and then going back 10 ns and forward 125 ns for sodium and 10 ns otherwise.
     """
     data = np.asarray(data)
     t = get_times(x,data)
@@ -39,11 +39,11 @@ def get_window(x, data, left=1, right=10):
         b = len(x) - 1
     return a, b
 
-def integrate(x, data):
+def integrate(x, data, a, b):
     """
     Integrate all waveforms in `data` with times `x`.
     """
-    a, b = get_window(x,data)
+    
     # i = v/r
     # divide by 50 ohms to convert to a charge
     return -np.trapz(data[:,a:b],x=x[a:b])*1000/50.0
@@ -81,11 +81,26 @@ if __name__ == '__main__':
             for channel in f:
                 if channel == 'settings':
                     continue
-                charge[channel] = integrate(x,f[channel])
+                
+                # Baseline correction for sodium
                 if args.sodium:
-                    a, b = get_window(x,f[channel],left=10,right=100)
+                    avg_noise = []
+                    for i in f[channel][:,np.where(x < x[0] + 10)[0]]:
+                        avg_noise.append(np.average(i))
+                    k = 0
+                    for i in range(len(f[channel])):
+                        f[channel][i] = np.array(f[channel][i])
+                        f[channel][i] = f[channel][i] - avg_noise[k]
+                        k = k + 1
+                    print(np.average(avg_noise))
+                
+                if args.sodium:
+                    a, b = get_window(x,f[channel],left=10,right=125)
                 else:
                     a, b = get_window(x,f[channel])
+                
+                charge[channel] = integrate(x,f[channel], a, b)
+                
                 if args.plot:
                     plt.figure()
                     plt.plot(x,f[channel][:100].T)
