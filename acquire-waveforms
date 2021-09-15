@@ -134,7 +134,7 @@ if __name__ == '__main__':
                 dpo.write(':digitize')
                 for j in enabled_channels:
                     dpo.write(":WAVeform:source channel%i" % j)
-                    f['channel%i' % j][i] = np.array(map(float,dpo.query(":WAVeform:DATA?").split(',')[:-1]))
+                    f['channel%i' % j][i] = np.fromstring(dpo.query(":WAVeform:DATA?"),dtype=np.float,delimiter=',')[:-1]
             except visa.Error as e:
                 print("\nvisa error: %s" % str(e))
                 # Now we try to flush the buffers on the scope so we don't get
