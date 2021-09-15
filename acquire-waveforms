@@ -1,19 +1,6 @@
 #!/usr/bin/env python
 from __future__ import print_function
 import time
-import ctypes
-
-class GenericRecordHeader(ctypes.BigEndianStructure):
-    _fields_ = [('RecordID',      ctypes.c_uint8),
-                ('RecordLength',  ctypes.c_uint32),
-                ('RecordVersion', ctypes.c_uint32)]
-
-def parse_header(data):
-    if data[0] != '#':
-        raise ValueError("data should start with '#'")
-    nbytes = struct.unpack('B',data[1])
-    nbytes_waveform = struct.unpack('B'*nbytes,data[2:2+nbytes])
-    return struct.unpack('h'*nbytes_waveform,data[2+nbytes:-1])
 
 SETTINGS = [\
     ':TIMebase:RANGe',
@@ -34,6 +21,7 @@ SETTINGS = [\
     ':TRIGger:EDGE:SOURce',
     ':TRIGger:LEVel',
     ':TRIGger:EDGE:SLOPe',
+    ':waveform:format',
 ]
 
 def get_settings(dpo):
@@ -92,6 +80,7 @@ if __name__ == '__main__':
     parser.add_argument('--settings', default=None, help='json file with settings', required=False)
     parser.add_argument('-o','--output', default=None, help='output file name', required=True)
     parser.add_argument('--ascii',default=False,action='store_true',help='use ascii format')
+    parser.add_argument('-j', '--segment-count', default=100, help='number of waveforms to acquire at a time')
     args = parser.parse_args()
 
     # establish communication with dpo
@@ -118,9 +107,14 @@ if __name__ == '__main__':
     dpo.write(":system:header off")
     if args.ascii:
         dpo.write(":WAVeform:format ASCII")
+        args.segment_count = 1
     else:
         dpo.write(":WAVeform:FORMat WORD")
-    dpo.write(":WAVeform:BYTEorder LSBFirst")
+        dpo.write(":acquire:mode segmented")
+        dpo.write(":acquire:segmented:count %i" % args.segment_count)
+        dpo.write(":WAVeform:segmented:all on")
+        dpo.write(":WAVeform:BYTEorder LSBFirst")
+
     xinc = float(dpo.query(":WAVeform:xincrement?"))
     xorg = float(dpo.query(":WAVeform:xorigin?"))
     yinc = float(dpo.query(":WAVeform:yincrement?"))
@@ -145,21 +139,29 @@ if __name__ == '__main__':
         for i in range(1,5):
             if int(dpo.query(":CHANnel%i:display?" % i)) == 1:
                 enabled_channels.append(i)
-                f.create_dataset("channel%i" % i, (args.numEvents, points), dtype='f4', chunks=(max(1,min(100, args.numEvents//100)), points), compression='gzip'))
+                if args.ascii:
+                    f.create_dataset("channel%i" % i, (args.numEvents, points), dtype='f4', chunks=(max(1,min(100, args.numEvents//100)), points), compression='gzip'))
+                else:
+                    f.create_dataset("channel%i" % i, (args.numEvents, points), dtype='i2', chunks=(max(1,min(100, args.numEvents//100)), points), compression='gzip'))
 
-        for i in range(args.numEvents):
+        i = 0
+        while i <= args.numEvents:
             if i % 10 == 0:
                 print(".",end='')
                 sys.stdout.flush()
+
+            if not args.ascii:
+                if i + args.segmented_count > args.numEvents:
+                    dpo.write(":acquire:segmented:count %i" % (args.numEvents - i))
 
             try:
                 dpo.write(':digitize')
                 for j in enabled_channels:
                     dpo.write(":WAVeform:source channel%i" % j)
                     if args.ascii:
-                        f['channel%i' % j][i] = np.fromstring(dpo.query(":WAVeform:DATA?"),dtype=np.float,delimiter=',')[:-1]
+                        f['channel%i' % j][i:i+args.segment_count] = np.fromstring(dpo.query(":WAVeform:DATA?"),dtype=np.float,delimiter=',')[:-1]
                     else:
-                        data = parse_header(dpo.query(":WAVeform:DATA?"))
+                        f['channel%i' % j][i:i+args.segment_count] = dpo.query_binary_values(":WAVeform:DATA?",dataype='h').reshape((-1,points))
             except visa.Error as e:
                 print("\nvisa error: %s" % str(e))
                 # Now we try to flush the buffers on the scope so we don't get
@@ -171,6 +173,7 @@ if __name__ == '__main__':
                 except Exception as e:
                     pass
                 continue
+            i += args.segment_count
         print()
     finally:
         f.close()

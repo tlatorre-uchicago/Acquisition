@@ -81,29 +81,34 @@ if __name__ == '__main__':
             for channel in f:
                 if channel == 'settings':
                     continue
-                
+
+                if 'waveform:format' in f['settings'] and f['settings'].attrs[':waveform:format'] == 'word':
+                    y = (f[channel]-f.attrs['yorg'])*f.attrs['yinc']
+                else:
+                    y = f[channel]
+
                 # Baseline correction for sodium
                 if args.sodium:
                     avg_noise = []
-                    for i in f[channel][:,np.where(x < x[0] + 10)[0]]:
+                    for i in y[:,np.where(x < x[0] + 10)[0]]:
                         avg_noise.append(np.average(i))
                     k = 0
-                    for i in range(len(f[channel])):
-                        f[channel][i] = np.array(f[channel][i])
-                        f[channel][i] = f[channel][i] - avg_noise[k]
+                    for i in range(len(y)):
+                        y[i] = np.array(y[i])
+                        y[i] = y[i] - avg_noise[k]
                         k = k + 1
                     print(np.average(avg_noise))
                 
                 if args.sodium:
-                    a, b = get_window(x,f[channel],left=10,right=125)
+                    a, b = get_window(x,y,left=10,right=125)
                 else:
-                    a, b = get_window(x,f[channel])
+                    a, b = get_window(x,y)
                 
-                charge[channel] = integrate(x,f[channel], a, b)
+                charge[channel] = integrate(x,y, a, b)
                 
                 if args.plot:
                     plt.figure()
-                    plt.plot(x,f[channel][:100].T)
+                    plt.plot(x,y[:100].T)
                     plt.xlabel("Time (ns)")
                     plt.ylabel("Voltage (V)")
                     plt.title(channel)
