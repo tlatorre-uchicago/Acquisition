@@ -21,7 +21,11 @@ SETTINGS = [\
     ':TRIGger:EDGE:SOURce',
     ':TRIGger:LEVel',
     ':TRIGger:EDGE:SLOPe',
-    ':waveform:format',
+    ':WAVeform:FORMat',
+    ':ACQuire:MODE SEGMented',
+    ':ACQuire:SEGMented:COUNt',
+    ':WAVeform:SEGMented:ALL',
+    ':WAVeform:BYTEorder'
 ]
 
 def get_settings(dpo):
@@ -110,9 +114,9 @@ if __name__ == '__main__':
         args.segment_count = 1
     else:
         dpo.write(":WAVeform:FORMat WORD")
-        dpo.write(":acquire:mode segmented")
-        dpo.write(":acquire:segmented:count %i" % args.segment_count)
-        dpo.write(":WAVeform:segmented:all on")
+        dpo.write(":ACQuire:MODE SEGMented")
+        dpo.write(":ACQuire:SEGMented:COUNt %i" % args.segment_count)
+        dpo.write(":WAVeform:SEGMented:ALL ON")
         dpo.write(":WAVeform:BYTEorder LSBFirst")
 
     xinc = float(dpo.query(":WAVeform:xincrement?"))
@@ -134,16 +138,19 @@ if __name__ == '__main__':
     for key, value in settings.iteritems():
         f['settings'].attrs[key] = value
 
-    try:
-        enabled_channels = []
-        for i in range(1,5):
-            if int(dpo.query(":CHANnel%i:display?" % i)) == 1:
-                enabled_channels.append(i)
-                if args.ascii:
-                    f.create_dataset("channel%i" % i, (args.numEvents, points), dtype='f4', chunks=(max(1,min(100, args.numEvents//100)), points), compression='gzip')
-                else:
-                    f.create_dataset("channel%i" % i, (args.numEvents, points), dtype='i2', chunks=(max(1,min(100, args.numEvents//100)), points), compression='gzip')
+    enabled_channels = []
+    for i in range(1,5):
+        if int(dpo.query(":CHANnel%i:display?" % i)) == 1:
+            enabled_channels.append(i)
+            if args.ascii:
+                f.create_dataset("channel%i" % i, (args.numEvents, points), dtype='f4', chunks=(max(1,min(100, args.numEvents//100)), points), compression='gzip')
+            else:
+                f.create_dataset("channel%i" % i, (args.numEvents, points), dtype='i2', chunks=(max(1,min(100, args.numEvents//100)), points), compression='gzip')
 
+    # start a timer
+    time0 = time.time()
+
+    try:
         i = 0
         while i <= args.numEvents:
             if i % 10 == 0:
@@ -175,9 +182,22 @@ if __name__ == '__main__':
                 continue
             i += args.segment_count
         print()
+    except KeyboardInterrupt:
+        print '\nresizing datasets...'
+
+        for channel in enabled_channels:
+            f['channel%i' % channel].resize((i, -1))
+            
+        raise
     finally:
         f.close()
+        elapsed = time.time() - time0
 
-    set_settings(dpo,settings)
+        if i > 0:
+            print 'Completed %i events in %.3f seconds.' % (i, elapsed)
+            print 'Averaged %.5f seconds per acquisition.' % (elapsed/i)
+            print "Wrote to file '%s'." % args.output
 
-    dpo.close()
+        set_settings(dpo,settings)
+
+        dpo.close()

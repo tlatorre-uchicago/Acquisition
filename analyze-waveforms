@@ -82,7 +82,8 @@ if __name__ == '__main__':
                 if channel == 'settings':
                     continue
 
-                if ':waveform:format' in dict(f['settings'].attrs) and f['settings'].attrs[':waveform:format'] == 'WORD':
+                if ':WAVeform:FORMat' in dict(f['settings'].attrs) and f['settings'].attrs[':WAVeform:FORMat'] != 'ASC':
+                    # convert word values -> voltages if the data was saved in a non-ascii format
                     y = f[channel]*f.attrs['yinc'] + f.attrs['yorg']
                 else:
                     y = f[channel]
