@@ -22,7 +22,7 @@ SETTINGS = [\
     ':TRIGger:LEVel',
     ':TRIGger:EDGE:SLOPe',
     ':WAVeform:FORMat',
-    ':ACQuire:MODE SEGMented',
+    ':ACQuire:MODE',
     ':ACQuire:SEGMented:COUNt',
     ':WAVeform:SEGMented:ALL',
     ':WAVeform:BYTEorder'
@@ -183,7 +183,7 @@ if __name__ == '__main__':
             i += args.segment_count
         print()
     except KeyboardInterrupt:
-        print '\nresizing datasets...'
+        print('\nresizing datasets...')
 
         for channel in enabled_channels:
             f['channel%i' % channel].resize((i, -1))
@@ -194,9 +194,9 @@ if __name__ == '__main__':
         elapsed = time.time() - time0
 
         if i > 0:
-            print 'Completed %i events in %.3f seconds.' % (i, elapsed)
-            print 'Averaged %.5f seconds per acquisition.' % (elapsed/i)
-            print "Wrote to file '%s'." % args.output
+            print('Completed %i events in %.3f seconds.' % (i, elapsed))
+            print('Averaged %.5f seconds per acquisition.' % (elapsed/i))
+            print("Wrote to file '%s'." % args.output)
 
         set_settings(dpo,settings)
 
