@@ -117,6 +117,12 @@ if __name__ == '__main__':
         for x in charge[channel]:
             h.Fill(x)
         
+        if args.plot:
+            plt.figure()
+            plt.hist(charge[channel],bins=bins,histtype='step',label=channel)
+            plt.xlabel("Charge (pC)")
+            plt.legend()
+
         if args.sodium:
             
             """
@@ -220,16 +226,6 @@ if __name__ == '__main__':
                 # the function, which is a gaussian here
                 y = p0*np.exp(-0.5*((x-p1)/p2)**2)
             
-                if args.plot:
-                    plt.figure()
-                    plt.hist(charge[channel],bins=bins,histtype='step',label=channel)
-                    plt.xlabel("Charge (pC)")
-                    plt.legend()
-                    plt.plot(x, y, 'r')
-            
-            if args.plot:
-                plt.show()
-        
         h.Write()
                     
     f.Close()
