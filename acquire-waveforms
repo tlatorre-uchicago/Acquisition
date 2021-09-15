@@ -125,7 +125,7 @@ if __name__ == '__main__':
     xorg = float(dpo.query(":WAVeform:xorigin?"))
     yinc = float(dpo.query(":WAVeform:yincrement?"))
     yorg = float(dpo.query(":WAVeform:yorigin?"))
-    points = float(dpo.query(":WAVeform:points?"))
+    points = int(dpo.query(":WAVeform:points?"))
 
     # x = xorg + np.linspace(0,xinc*n,n)
     f = h5py.File(args.output,"w")

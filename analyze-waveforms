@@ -19,9 +19,9 @@ def get_times(x, data, baseline=10):
     # case for the triggering channel), then don't apply the selection.
     if np.count_nonzero(pulses):
         data = data[pulses]
-    min = np.min(data,axis=-1)
-    threshold = 0.4*min
-    return x[np.argmin(data > threshold[:,np.newaxis],axis=-1)]
+    argmin = np.argmin(data,axis=-1)
+    threshold = 0.4*data[np.arange(data.shape[0]),argmin]
+    return x[data.shape[1]-np.argmax(((np.arange(data.shape[1]) < argmin[:,np.newaxis]) & (data > threshold[:,np.newaxis]))[:,::-1],axis=-1)-1]
 
 def get_window(x, data, left=1, right=10):
     """
@@ -76,7 +76,7 @@ if __name__ == '__main__':
     charge = {}
     for filename in args.filenames:
         with h5py.File(filename) as f:
-            x = f.attrs['xorg'] + np.linspace(0,f.attrs['xinc']*f.attrs['points'],f.attrs['points'])
+            x = f.attrs['xorg'] + np.linspace(0,f.attrs['xinc']*f.attrs['points'],int(f.attrs['points']))
             x *= 1e9
             for channel in f:
                 if channel == 'settings':
@@ -168,10 +168,6 @@ if __name__ == '__main__':
                     plt.xlabel("Charge (pC)")
                     plt.legend()
                     plt.plot(x, y, 'r')
-            
-            if args.plot:
-                plt.show()
-
 
         if args.laser and channel == 'channel4':
             
@@ -237,3 +233,6 @@ if __name__ == '__main__':
         h.Write()
                     
     f.Close()
+
+    if args.plot:
+        plt.show()
