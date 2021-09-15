@@ -1,6 +1,19 @@
 #!/usr/bin/env python
 from __future__ import print_function
 import time
+import ctypes
+
+class GenericRecordHeader(ctypes.BigEndianStructure):
+    _fields_ = [('RecordID',      ctypes.c_uint8),
+                ('RecordLength',  ctypes.c_uint32),
+                ('RecordVersion', ctypes.c_uint32)]
+
+def parse_header(data):
+    if data[0] != '#':
+        raise ValueError("data should start with '#'")
+    nbytes = struct.unpack('B',data[1])
+    nbytes_waveform = struct.unpack('B'*nbytes,data[2:2+nbytes])
+    return struct.unpack('h'*nbytes_waveform,data[2+nbytes:-1])
 
 SETTINGS = [\
     ':TIMebase:RANGe',
@@ -78,6 +91,7 @@ if __name__ == '__main__':
     parser.add_argument('--ip-address', help='ip address of scope', required=True)
     parser.add_argument('--settings', default=None, help='json file with settings', required=False)
     parser.add_argument('-o','--output', default=None, help='output file name', required=True)
+    parser.add_argument('--ascii',default=False,action='store_true',help='use ascii format')
     args = parser.parse_args()
 
     # establish communication with dpo
@@ -102,15 +116,23 @@ if __name__ == '__main__':
     dpo.write(":ACQuire:MODE RTIMe")
 
     dpo.write(":system:header off")
-    dpo.write(":WAVeform:format ASCII")
+    if args.ascii:
+        dpo.write(":WAVeform:format ASCII")
+    else:
+        dpo.write(":WAVeform:FORMat WORD")
+    dpo.write(":WAVeform:BYTEorder LSBFirst")
     xinc = float(dpo.query(":WAVeform:xincrement?"))
     xorg = float(dpo.query(":WAVeform:xorigin?"))
+    yinc = float(dpo.query(":WAVeform:yincrement?"))
+    yorg = float(dpo.query(":WAVeform:yorigin?"))
     points = float(dpo.query(":WAVeform:points?"))
 
     # x = xorg + np.linspace(0,xinc*n,n)
     f = h5py.File(args.output,"w")
     f.attrs['xinc'] = xinc
     f.attrs['xorg'] = xorg
+    f.attrs['yinc'] = yinc
+    f.attrs['yorg'] = yorg
     f.attrs['points'] = points
 
     f.create_group("settings")
@@ -134,7 +156,10 @@ if __name__ == '__main__':
                 dpo.write(':digitize')
                 for j in enabled_channels:
                     dpo.write(":WAVeform:source channel%i" % j)
-                    f['channel%i' % j][i] = np.fromstring(dpo.query(":WAVeform:DATA?"),dtype=np.float,delimiter=',')[:-1]
+                    if args.ascii:
+                        f['channel%i' % j][i] = np.fromstring(dpo.query(":WAVeform:DATA?"),dtype=np.float,delimiter=',')[:-1]
+                    else:
+                        data = parse_header(dpo.query(":WAVeform:DATA?"))
             except visa.Error as e:
                 print("\nvisa error: %s" % str(e))
                 # Now we try to flush the buffers on the scope so we don't get
