@@ -142,7 +142,7 @@ if __name__ == '__main__':
                 if args.ascii:
                     f.create_dataset("channel%i" % i, (args.numEvents, points), dtype='f4', chunks=(max(1,min(100, args.numEvents//100)), points), compression='gzip')
                 else:
-                    f.create_dataset("channel%i" % i, (args.numEvents, points), dtype='i2', chunks=(max(1,min(100, args.numEvents//100)), points), compression='gzip'
+                    f.create_dataset("channel%i" % i, (args.numEvents, points), dtype='i2', chunks=(max(1,min(100, args.numEvents//100)), points), compression='gzip')
 
         i = 0
         while i <= args.numEvents:
@@ -161,7 +161,7 @@ if __name__ == '__main__':
                     if args.ascii:
                         f['channel%i' % j][i:i+args.segment_count] = np.fromstring(dpo.query(":WAVeform:DATA?"),dtype=np.float,sep=',')[:-1]
                     else:
-                        f['channel%i' % j][i:i+args.segment_count] = np.array(dpo.query_binary_values(":WAVeform:DATA?",dataype='h')).reshape((-1,points))
+                        f['channel%i' % j][i:i+args.segment_count] = np.array(dpo.query_binary_values(":WAVeform:DATA?",datatype='h')).reshape((-1,points))
             except visa.Error as e:
                 print("\nvisa error: %s" % str(e))
                 # Now we try to flush the buffers on the scope so we don't get
