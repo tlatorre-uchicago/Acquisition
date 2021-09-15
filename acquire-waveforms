@@ -37,9 +37,9 @@ def get_settings(dpo):
     for setting in SETTINGS:
         if setting == ':TRIGger:LEVel':
             for channel in ['CHANnel%i' % i for i in range(1,5)] + ['AUX']:
-                values["%s %s," % (setting,channel)] = dpo.query('%s? %s' % (setting,channel))
+                values["%s %s," % (setting,channel)] = dpo.query('%s? %s' % (setting,channel)).strip()
         else:
-            values[setting] = dpo.query('%s?' % setting)
+            values[setting] = dpo.query('%s?' % setting).strip()
     return values
 
 def set_settings(dpo, settings):
@@ -140,9 +140,9 @@ if __name__ == '__main__':
             if int(dpo.query(":CHANnel%i:display?" % i)) == 1:
                 enabled_channels.append(i)
                 if args.ascii:
-                    f.create_dataset("channel%i" % i, (args.numEvents, points), dtype='f4', chunks=(max(1,min(100, args.numEvents//100)), points), compression='gzip'))
+                    f.create_dataset("channel%i" % i, (args.numEvents, points), dtype='f4', chunks=(max(1,min(100, args.numEvents//100)), points), compression='gzip')
                 else:
-                    f.create_dataset("channel%i" % i, (args.numEvents, points), dtype='i2', chunks=(max(1,min(100, args.numEvents//100)), points), compression='gzip'))
+                    f.create_dataset("channel%i" % i, (args.numEvents, points), dtype='i2', chunks=(max(1,min(100, args.numEvents//100)), points), compression='gzip'
 
         i = 0
         while i <= args.numEvents:
@@ -151,7 +151,7 @@ if __name__ == '__main__':
                 sys.stdout.flush()
 
             if not args.ascii:
-                if i + args.segmented_count > args.numEvents:
+                if i + args.segment_count > args.numEvents:
                     dpo.write(":acquire:segmented:count %i" % (args.numEvents - i))
 
             try:
@@ -159,9 +159,9 @@ if __name__ == '__main__':
                 for j in enabled_channels:
                     dpo.write(":WAVeform:source channel%i" % j)
                     if args.ascii:
-                        f['channel%i' % j][i:i+args.segment_count] = np.fromstring(dpo.query(":WAVeform:DATA?"),dtype=np.float,delimiter=',')[:-1]
+                        f['channel%i' % j][i:i+args.segment_count] = np.fromstring(dpo.query(":WAVeform:DATA?"),dtype=np.float,sep=',')[:-1]
                     else:
-                        f['channel%i' % j][i:i+args.segment_count] = dpo.query_binary_values(":WAVeform:DATA?",dataype='h').reshape((-1,points))
+                        f['channel%i' % j][i:i+args.segment_count] = np.array(dpo.query_binary_values(":WAVeform:DATA?",dataype='h')).reshape((-1,points))
             except visa.Error as e:
                 print("\nvisa error: %s" % str(e))
                 # Now we try to flush the buffers on the scope so we don't get

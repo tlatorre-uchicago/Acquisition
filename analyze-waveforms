@@ -82,8 +82,8 @@ if __name__ == '__main__':
                 if channel == 'settings':
                     continue
 
-                if 'waveform:format' in f['settings'] and f['settings'].attrs[':waveform:format'] == 'word':
-                    y = (f[channel]-f.attrs['yorg'])*f.attrs['yinc']
+                if ':waveform:format' in dict(f['settings'].attrs) and f['settings'].attrs[':waveform:format'] == 'WORD':
+                    y = f[channel]*f.attrs['yinc'] + f.attrs['yorg']
                 else:
                     y = f[channel]
 
