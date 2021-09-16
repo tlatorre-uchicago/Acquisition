@@ -197,6 +197,11 @@ if __name__ == '__main__':
             print('Averaged %.5f seconds per acquisition.' % (elapsed/i))
             print("Wrote to file '%s'." % args.output)
 
+        # At this point, I consistently get errors if I try to talk to the
+        # scope, so we'll just close the connection, try to restore it and
+        # reset the settings.
+        dpo.close()
+        dpo = rm.open_resource('TCPIP::%s::INSTR' % args.ip_address)
         set_settings(dpo,settings)
 
         dpo.close()
