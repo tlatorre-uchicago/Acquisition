@@ -91,9 +91,9 @@ if __name__ == '__main__':
                     y = f[channel]
 
                 if args.sodium:
-                    a, b = get_window(x,y,left=10,right=150)
+                    a, b = get_window(x,y,left=20,right=150)
                 else:
-                    a, b = get_window(x,y)
+                    a, b = get_window(x,y,left=5,right=10)
                 
                 charge[channel] = integrate(x,y, a, b)
                 
