@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 from __future__ import print_function, division
 import time
 
@@ -52,7 +52,7 @@ def set_settings(dpo, settings):
     settings are simple key, value pairs but some have a more complicated
     format for the key (see get_settings()).
     """
-    for key, value in settings.iteritems():
+    for key, value in settings.items():
         dpo.write('%s %s' % (key, value))
 
 def is_done(dpo):
@@ -135,7 +135,7 @@ if __name__ == '__main__':
 
     f.create_group("settings")
 
-    for key, value in settings.iteritems():
+    for key, value in settings.items():
         f['settings'].attrs[key] = value
 
     enabled_channels = []
