@@ -84,7 +84,7 @@ if __name__ == '__main__':
     parser.add_argument('--settings', default=None, help='json file with settings', required=False)
     parser.add_argument('-o','--output', default=None, help='output file name', required=True)
     parser.add_argument('--ascii',default=False,action='store_true',help='use ascii format')
-    parser.add_argument('-j', '--segment-count', default=100, help='number of waveforms to acquire at a time')
+    parser.add_argument('-j', '--segment-count', type=int, default=100, help='number of waveforms to acquire at a time')
     args = parser.parse_args()
 
     # establish communication with dpo
@@ -130,10 +130,6 @@ if __name__ == '__main__':
     for i in range(1,5):
         if int(dpo.query(":CHANnel%i:display?" % i)) == 1:
             enabled_channels.append(i)
-            if args.ascii:
-                f.create_dataset("channel%i" % i, (args.numEvents, points), dtype='f4', chunks=(max(1,min(100, args.numEvents//100)), points), compression='gzip')
-            else:
-                f.create_dataset("channel%i" % i, (args.numEvents, points), dtype='i2', chunks=(max(1,min(100, args.numEvents//100)), points), compression='gzip')
 
     # start a timer
     time0 = time.time()
@@ -147,24 +143,31 @@ if __name__ == '__main__':
 
             if not args.ascii:
                 if i + args.segment_count > args.numEvents:
-                    dpo.write(":acquire:segmented:count %i" % (args.numEvents - i))
+                    args.segment_count = args.numEvents - i
+                    dpo.write(":acquire:segmented:count %i" % args.segment_count)
 
             try:
                 dpo.write(':digitize')
                 for j in enabled_channels:
                     dpo.write(":WAVeform:source channel%i" % j)
                     if i == 0:
+                        points = int(dpo.query(":WAVeform:points?"))
+
+                        if args.ascii:
+                            f.create_dataset("channel%i" % j, (args.numEvents, points), dtype='f4', chunks=(max(1,min(100, args.numEvents//100)), points), compression='gzip')
+                        else:
+                            f.create_dataset("channel%i" % j, (args.numEvents, points), dtype='i2', chunks=(max(1,min(100, args.numEvents//100)), points), compression='gzip')
                         # x = xorg + np.linspace(0,xinc*n,n)
                         f['channel%i' % j].attrs['xinc'] = float(dpo.query(":WAVeform:xincrement?"))
                         f['channel%i' % j].attrs['xorg'] = float(dpo.query(":WAVeform:xorigin?"))
                         f['channel%i' % j].attrs['yinc'] = float(dpo.query(":WAVeform:yincrement?"))
                         f['channel%i' % j].attrs['yorg'] = float(dpo.query(":WAVeform:yorigin?"))
-                        f['channel%i' % j].attrs['points'] = int(dpo.query(":WAVeform:points?"))
+                        f['channel%i' % j].attrs['points'] = points
 
                     if args.ascii:
                         f['channel%i' % j][i:i+args.segment_count] = np.fromstring(dpo.query(":WAVeform:DATA?"),dtype=np.float,sep=',')[:-1]
                     else:
-                        f['channel%i' % j][i:i+args.segment_count] = np.array(dpo.query_binary_values(":WAVeform:DATA?",datatype='h')).reshape((-1,points))
+                        f['channel%i' % j][i:i+args.segment_count] = np.array(dpo.query_binary_values(":WAVeform:DATA?",datatype='h')).reshape((args.segment_count,-1))
             except visa.Error as e:
                 print("\nvisa error: %s" % str(e))
                 # Now we try to flush the buffers on the scope so we don't get
