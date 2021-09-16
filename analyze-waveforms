@@ -103,7 +103,7 @@ if __name__ == '__main__':
                     print(np.average(avg_noise))
                 
                 if args.sodium:
-                    a, b = get_window(x,y,left=10,right=125)
+                    a, b = get_window(x,y,left=10,right=150)
                 else:
                     a, b = get_window(x,y)
                 
