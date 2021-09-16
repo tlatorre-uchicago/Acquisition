@@ -182,12 +182,11 @@ if __name__ == '__main__':
             i += args.segment_count
         print()
     except KeyboardInterrupt:
-        print('\nresizing datasets...')
+        print('\nctrl-c caught')
+        print('resizing datasets...')
 
         for channel in enabled_channels:
-            f['channel%i' % channel].resize((i, -1))
-            
-        raise
+            f['channel%i' % channel].resize((i, f['channel%i' % channel].shape[1]))
     finally:
         f.close()
         elapsed = time.time() - time0
