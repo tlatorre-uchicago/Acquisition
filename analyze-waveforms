@@ -83,7 +83,6 @@ if __name__ == '__main__':
 
                 if 'yinc' in dict(f[channel].attrs):
                     x = f[channel].attrs['xorg'] + np.linspace(0,f[channel].attrs['xinc']*f[channel].attrs['points'],int(f[channel].attrs['points']))
-                    x *= 1e9
 
                     if ':WAVeform:FORMat' in dict(f['settings'].attrs) and f['settings'].attrs[':WAVeform:FORMat'] != 'ASC':
                         # convert word values -> voltages if the data was saved in a non-ascii format
