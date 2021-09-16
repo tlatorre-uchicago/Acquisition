@@ -81,14 +81,27 @@ if __name__ == '__main__':
                 if channel == 'settings':
                     continue
 
-                x = f.attrs['xorg'] + np.linspace(0,f.attrs['xinc']*f.attrs['points'],int(f.attrs['points']))
-                x *= 1e9
+                if 'yinc' in dict(f[channel].attrs):
+                    x = f[channel].attrs['xorg'] + np.linspace(0,f[channel].attrs['xinc']*f[channel].attrs['points'],int(f[channel].attrs['points']))
+                    x *= 1e9
 
-                if ':WAVeform:FORMat' in dict(f['settings'].attrs) and f['settings'].attrs[':WAVeform:FORMat'] != 'ASC':
-                    # convert word values -> voltages if the data was saved in a non-ascii format
-                    y = f[channel]*f.attrs['yinc'] + f.attrs['yorg']
+                    if ':WAVeform:FORMat' in dict(f['settings'].attrs) and f['settings'].attrs[':WAVeform:FORMat'] != 'ASC':
+                        # convert word values -> voltages if the data was saved in a non-ascii format
+                        y = f[channel]*f[channel].attrs['yinc'] + f[channel].attrs['yorg']
+                    else:
+                        y = f[channel]
                 else:
-                    y = f[channel]
+                    # In older versions of the code, I stored xorg, xinc, etc.
+                    # in the main HDF5 group and not on a per channel basis
+                    x = f.attrs['xorg'] + np.linspace(0,f.attrs['xinc']*f.attrs['points'],int(f.attrs['points']))
+
+                    if ':WAVeform:FORMat' in dict(f['settings'].attrs) and f['settings'].attrs[':WAVeform:FORMat'] != 'ASC':
+                        # convert word values -> voltages if the data was saved in a non-ascii format
+                        y = f[channel]*f.attrs['yinc'] + f.attrs['yorg']
+                    else:
+                        y = f[channel]
+
+                x *= 1e9
 
                 if args.sodium:
                     a, b = get_window(x,y,left=20,right=150)
