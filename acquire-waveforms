@@ -119,19 +119,7 @@ if __name__ == '__main__':
         dpo.write(":WAVeform:SEGMented:ALL ON")
         dpo.write(":WAVeform:BYTEorder LSBFirst")
 
-    xinc = float(dpo.query(":WAVeform:xincrement?"))
-    xorg = float(dpo.query(":WAVeform:xorigin?"))
-    yinc = float(dpo.query(":WAVeform:yincrement?"))
-    yorg = float(dpo.query(":WAVeform:yorigin?"))
-    points = int(dpo.query(":WAVeform:points?"))
-
-    # x = xorg + np.linspace(0,xinc*n,n)
     f = h5py.File(args.output,"w")
-    f.attrs['xinc'] = xinc
-    f.attrs['xorg'] = xorg
-    f.attrs['yinc'] = yinc
-    f.attrs['yorg'] = yorg
-    f.attrs['points'] = points
 
     f.create_group("settings")
 
@@ -165,6 +153,14 @@ if __name__ == '__main__':
                 dpo.write(':digitize')
                 for j in enabled_channels:
                     dpo.write(":WAVeform:source channel%i" % j)
+                    if i == 0:
+                        # x = xorg + np.linspace(0,xinc*n,n)
+                        f['channel%i' % j].attrs['xinc'] = float(dpo.query(":WAVeform:xincrement?"))
+                        f['channel%i' % j].attrs['xorg'] = float(dpo.query(":WAVeform:xorigin?"))
+                        f['channel%i' % j].attrs['yinc'] = float(dpo.query(":WAVeform:yincrement?"))
+                        f['channel%i' % j].attrs['yorg'] = float(dpo.query(":WAVeform:yorigin?"))
+                        f['channel%i' % j].attrs['points'] = int(dpo.query(":WAVeform:points?"))
+
                     if args.ascii:
                         f['channel%i' % j][i:i+args.segment_count] = np.fromstring(dpo.query(":WAVeform:DATA?"),dtype=np.float,sep=',')[:-1]
                     else:
