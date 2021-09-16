@@ -92,8 +92,8 @@ if __name__ == '__main__':
                     f1.SetParameter(i,y_pos[j])
                     f1.SetParameter(i+1,x_pos[j])
                     f1.FixParameter(i+1,x_pos[j])
-                    f1.SetParameter(i+2,0.03)
-                    f1.FixParameter(i+2,0.03)
+                    f1.SetParameter(i+2,0.02)
+                    f1.FixParameter(i+2,0.02)
 
                 r = h.Fit(f1, 'ILMSRN+')
 
