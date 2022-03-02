@@ -61,6 +61,33 @@ def get_bins(x):
     bin_width = 0.5*iqr(x)/(len(x)**(1/3.0))
     return np.arange(np.min(x),np.max(x),bin_width)
 
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield (i,i + n)
+
+def convert_data(f, channel, start, stop):
+    if 'yinc' in dict(f[channel].attrs):
+        x = f[channel].attrs['xorg'] + np.linspace(0,f[channel].attrs['xinc']*f[channel].attrs['points'],int(f[channel].attrs['points']))
+
+        if ':WAVeform:FORMat' in dict(f['settings'].attrs) and f['settings'].attrs[':WAVeform:FORMat'] != 'ASC':
+            # convert word values -> voltages if the data was saved in a non-ascii format
+            y = f[channel][start:stop]*f[channel].attrs['yinc'] + f[channel].attrs['yorg']
+        else:
+            y = f[channel][start:stop]
+    else:
+        # In older versions of the code, I stored xorg, xinc, etc.
+        # in the main HDF5 group and not on a per channel basis
+        x = f.attrs['xorg'] + np.linspace(0,f.attrs['xinc']*f.attrs['points'],int(f.attrs['points']))
+
+        if ':WAVeform:FORMat' in dict(f['settings'].attrs) and f['settings'].attrs[':WAVeform:FORMat'] != 'ASC':
+            # convert word values -> voltages if the data was saved in a non-ascii format
+            y = f[channel][start:stop]*f.attrs['yinc'] + f.attrs['yorg']
+        else:
+            y = f[channel][start:stop]
+
+    return x*1e9, y
+
 if __name__ == '__main__':
     from argparse import ArgumentParser
     import ROOT
@@ -72,6 +99,7 @@ if __name__ == '__main__':
     parser.add_argument('--sodium', default=False, action='store_true', help='flag to indicate data is from a sodium source')
     parser.add_argument('--laser', default=False, action='store_true', help='flag to indicate data is from a laser source')
     parser.add_argument('--plot', default=False, action='store_true', help='plot the waveforms and charge integral')
+    parser.add_argument('--chunks', default=10000, type=int, help='number of waveforms to process at a time')
     args = parser.parse_args()
 
     charge = {}
@@ -81,42 +109,38 @@ if __name__ == '__main__':
                 if channel == 'settings':
                     continue
 
-                if 'yinc' in dict(f[channel].attrs):
-                    x = f[channel].attrs['xorg'] + np.linspace(0,f[channel].attrs['xinc']*f[channel].attrs['points'],int(f[channel].attrs['points']))
+                N = len(f[channel])
 
-                    if ':WAVeform:FORMat' in dict(f['settings'].attrs) and f['settings'].attrs[':WAVeform:FORMat'] != 'ASC':
-                        # convert word values -> voltages if the data was saved in a non-ascii format
-                        y = f[channel]*f[channel].attrs['yinc'] + f[channel].attrs['yorg']
-                    else:
-                        y = f[channel]
-                else:
-                    # In older versions of the code, I stored xorg, xinc, etc.
-                    # in the main HDF5 group and not on a per channel basis
-                    x = f.attrs['xorg'] + np.linspace(0,f.attrs['xinc']*f.attrs['points'],int(f.attrs['points']))
-
-                    if ':WAVeform:FORMat' in dict(f['settings'].attrs) and f['settings'].attrs[':WAVeform:FORMat'] != 'ASC':
-                        # convert word values -> voltages if the data was saved in a non-ascii format
-                        y = f[channel]*f.attrs['yinc'] + f.attrs['yorg']
-                    else:
-                        y = f[channel]
-
-                x *= 1e9
+                x, y = convert_data(f,channel,0,args.chunks)
 
                 if args.sodium:
                     a, b = get_window(x,y,left=20,right=150)
                 else:
                     a, b = get_window(x,y,left=5,right=10)
                 
-                charge[channel] = integrate(x,y, a, b)
-                
+                for i in range(0, N, args.chunks):
+                    x, y = convert_data(f,channel,i,i+args.chunks)
+
+                    if channel in charge:
+                        charge[channel] = np.concat((charge[channel],integrate(x,y, a, b)))
+                    else:
+                        charge[channel] = integrate(x,y, a, b)
+                    
                 if args.plot:
                     plt.figure()
+                    plt.subplot(2,1,1)
                     plt.plot(x,y[:100].T)
                     plt.xlabel("Time (ns)")
                     plt.ylabel("Voltage (V)")
-                    plt.title(channel)
                     plt.axvline(x[a])
                     plt.axvline(x[b])
+                    plt.subplot(2,1,2)
+                    plt.plot(x,np.median(y,axis=0))
+                    plt.xlabel("Time (ns)")
+                    plt.ylabel("Voltage (V)")
+                    plt.axvline(x[a])
+                    plt.axvline(x[b])
+                    plt.suptitle(channel)
 
     f = ROOT.TFile(args.output,"recreate")
     for channel in charge:
