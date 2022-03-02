@@ -116,9 +116,9 @@ if __name__ == '__main__':
 
                     if i == 0:
                         if args.sodium:
-                            a, b = get_window(x,y,left=20,right=150)
+                            a, b = get_window(x,y,left=50,right=300)
                         else:
-                            a, b = get_window(x,y,left=5,right=10)
+                            a, b = get_window(x,y,left=50,right=300)
 
                     if channel in charge:
                         charge[channel] = np.concatenate((charge[channel],integrate(x,y, a, b)))
