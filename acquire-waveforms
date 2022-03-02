@@ -123,7 +123,7 @@ if __name__ == '__main__':
 
     f.create_group("settings")
 
-    for key, value in settings.items():
+    for key, value in get_settings(dpo).items():
         f['settings'].attrs[key] = value
 
     enabled_channels = []
@@ -136,7 +136,7 @@ if __name__ == '__main__':
 
     try:
         i = 0
-        while i <= args.numEvents:
+        while i < args.numEvents:
             if i % 10 == 0:
                 print(".",end='')
                 sys.stdout.flush()
