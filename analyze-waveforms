@@ -122,7 +122,7 @@ if __name__ == '__main__':
                     x, y = convert_data(f,channel,i,i+args.chunks)
 
                     if channel in charge:
-                        charge[channel] = np.concat((charge[channel],integrate(x,y, a, b)))
+                        charge[channel] = np.concatenate((charge[channel],integrate(x,y, a, b)))
                     else:
                         charge[channel] = integrate(x,y, a, b)
                     
