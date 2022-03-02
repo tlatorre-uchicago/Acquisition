@@ -111,15 +111,14 @@ if __name__ == '__main__':
 
                 N = len(f[channel])
 
-                x, y = convert_data(f,channel,0,args.chunks)
-
-                if args.sodium:
-                    a, b = get_window(x,y,left=20,right=150)
-                else:
-                    a, b = get_window(x,y,left=5,right=10)
-                
                 for i in range(0, N, args.chunks):
                     x, y = convert_data(f,channel,i,i+args.chunks)
+
+                    if i == 0:
+                        if args.sodium:
+                            a, b = get_window(x,y,left=20,right=150)
+                        else:
+                            a, b = get_window(x,y,left=5,right=10)
 
                     if channel in charge:
                         charge[channel] = np.concatenate((charge[channel],integrate(x,y, a, b)))
