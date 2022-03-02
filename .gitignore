@@ -1,1 +1,3 @@
 *.swp
+*.hdf5
+*.root
