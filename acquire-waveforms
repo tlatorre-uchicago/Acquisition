@@ -121,6 +121,11 @@ if __name__ == '__main__':
 
     f = h5py.File(args.output,"w")
 
+    f.create_group("original_settings")
+
+    for key, value in settings.items():
+        f['original_settings'].attrs[key] = value
+
     f.create_group("settings")
 
     for key, value in get_settings(dpo).items():

@@ -45,7 +45,10 @@ if __name__ == '__main__':
     print("*idn? = %s" % dpo.query('*idn?').strip())
 
     with h5py.File(args.settings,'r') as f:
-        settings = dict(f['settings'].attrs)
+        if 'original_settings' in f:
+            settings = dict(f['original_settings'].attrs)
+        else:
+            settings = dict(f['settings'].attrs)
     print("loading settings from %s" % args.settings)
     set_settings(dpo,settings)
 
